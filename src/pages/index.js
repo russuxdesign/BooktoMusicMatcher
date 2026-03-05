@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
 
 const MOOD = {
@@ -15,89 +15,73 @@ const MOOD = {
   default:     { bg:"rgba(232,168,56,0.09)", border:"rgba(232,168,56,0.3)", text:"#e8a838" },
 };
 
-const G = { audio: null, stop: null };
-function stopGlobal() {
-  if (G.audio) { G.audio.pause(); G.audio = null; }
-  if (G.stop)  { G.stop(); G.stop = null; }
-}
-
-function PlayButton({ previewUrl, mood }) {
-  const ms = MOOD[mood] || MOOD.default;
-  const [st, setSt] = useState("idle");
-  const [prog, setProg] = useState(0);
-  const audioRef = useRef(null);
-  useEffect(() => () => audioRef.current?.pause(), []);
-
-  const toggle = useCallback(() => {
-    if (!previewUrl) return;
-    if (st === "playing" || st === "loading") {
-      audioRef.current?.pause(); audioRef.current = null;
-      G.audio = null; G.stop = null; setSt("idle"); setProg(0); return;
-    }
-    stopGlobal(); setSt("loading");
-    const a = new Audio(previewUrl);
-    a.crossOrigin = "anonymous";
-    a.ontimeupdate = () => setProg((a.currentTime / (a.duration || 30)) * 100);
-    a.oncanplaythrough = () => { setSt("playing"); a.play().catch(() => setSt("failed")); };
-    a.onended = () => { setSt("idle"); setProg(0); G.audio = null; G.stop = null; };
-    a.onerror = () => { setSt("failed"); G.audio = null; G.stop = null; };
-    a.load();
-    audioRef.current = a; G.audio = a;
-    G.stop = () => { a.pause(); setSt("idle"); setProg(0); };
-  }, [previewUrl, st]);
-
-  return (
-    <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
-      <button onClick={e => { e.stopPropagation(); toggle(); }} disabled={!previewUrl || st==="failed"}
-        style={{ width:30, height:30, borderRadius:"50%", border:`1.5px solid ${previewUrl&&st!=="failed"?ms.border:"rgba(255,255,255,0.08)"}`, background:st==="playing"?ms.bg:"transparent", cursor:previewUrl&&st!=="failed"?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all 0.2s" }}>
-        {st==="loading" ? <div style={{ width:11,height:11,border:`2px solid ${ms.text}44`,borderTopColor:ms.text,borderRadius:"50%",animation:"spin 0.7s linear infinite" }} />
-        : st==="playing" ? <span style={{ color:ms.text,fontSize:9 }}>⏸</span>
-        : st==="failed"  ? <span style={{ color:"#333",fontSize:10 }}>✕</span>
-        : <span style={{ color:previewUrl?ms.text:"#2a2a3a",fontSize:9,marginLeft:1 }}>▶</span>}
-      </button>
-      <div style={{ flex:1,height:3,background:"rgba(255,255,255,0.06)",borderRadius:2,overflow:"hidden" }}>
-        <div style={{ height:"100%",width:`${prog}%`,background:ms.text,borderRadius:2,transition:"width 0.2s linear" }} />
-      </div>
-      <span style={{ color:"#444",fontSize:9,fontFamily:"'DM Mono',monospace",flexShrink:0 }}>
-        {st==="failed"?"unavail":previewUrl?"30s":"—"}
-      </span>
-    </div>
-  );
-}
+function stopGlobal() {}
 
 function PlaylistCard({ rec, index }) {
   const [hov, setHov] = useState(false);
+  const [showEmbed, setShowEmbed] = useState(false);
   const ms = MOOD[rec.mood?.toLowerCase()] || MOOD.default;
+  const playlistId = rec.playlist?.id;
+
   return (
     <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ display:"flex",overflow:"hidden",borderRadius:13,border:`1px solid ${hov?ms.border:"rgba(255,255,255,0.08)"}`,background:hov?ms.bg:"rgba(0,0,0,0.28)",boxShadow:hov?"0 10px 36px rgba(0,0,0,0.5)":"0 2px 10px rgba(0,0,0,0.3)",transform:hov?"translateY(-2px)":"none",transition:"all 0.25s ease",animation:`fadeUp 0.4s ease ${index*0.08}s both`,backdropFilter:"blur(10px)" }}>
-      <div style={{ width:96,height:96,flexShrink:0,background:ms.bg,overflow:"hidden" }}>
-        {rec.loading
-          ? <div style={{ width:96,height:96,display:"flex",alignItems:"center",justifyContent:"center" }}><div style={{ width:20,height:20,border:`2px solid ${ms.text}44`,borderTopColor:ms.text,borderRadius:"50%",animation:"spin 0.7s linear infinite" }} /></div>
-          : rec.thumbnail
-          ? <img src={rec.thumbnail} alt={rec.name} style={{ width:96,height:96,objectFit:"cover",display:"block" }} />
-          : <div style={{ width:96,height:96,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,opacity:0.4 }}>🎵</div>}
-      </div>
-      <div style={{ flex:1,minWidth:0,padding:"11px 13px",display:"flex",flexDirection:"column",justifyContent:"space-between" }}>
-        <div>
-          <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:3,flexWrap:"wrap" }}>
-            <span style={{ fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,color:hov?ms.text:"#ccc",transition:"color 0.2s" }}>{rec.name}</span>
-            <span style={{ background:ms.bg,border:`1px solid ${ms.border}`,color:ms.text,fontSize:8,fontFamily:"'DM Mono',monospace",padding:"2px 6px",borderRadius:20,letterSpacing:"1.5px",textTransform:"uppercase",flexShrink:0 }}>{rec.mood}</span>
+      style={{ borderRadius:13, border:`1px solid ${hov?ms.border:"rgba(255,255,255,0.08)"}`, background:hov?ms.bg:"rgba(0,0,0,0.28)", boxShadow:hov?"0 10px 36px rgba(0,0,0,0.5)":"0 2px 10px rgba(0,0,0,0.3)", transform:hov?"translateY(-2px)":"none", transition:"all 0.25s ease", animation:`fadeUp 0.4s ease ${index*0.08}s both`, backdropFilter:"blur(10px)", overflow:"hidden" }}>
+
+      {/* Top row: thumbnail + info */}
+      <div style={{ display:"flex" }}>
+        <div style={{ width:96, height:96, flexShrink:0, background:ms.bg, overflow:"hidden" }}>
+          {rec.loading
+            ? <div style={{ width:96,height:96,display:"flex",alignItems:"center",justifyContent:"center" }}><div style={{ width:20,height:20,border:`2px solid ${ms.text}44`,borderTopColor:ms.text,borderRadius:"50%",animation:"spin 0.7s linear infinite" }} /></div>
+            : rec.thumbnail
+            ? <img src={rec.thumbnail} alt={rec.name} style={{ width:96,height:96,objectFit:"cover",display:"block" }} />
+            : <div style={{ width:96,height:96,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,opacity:0.4 }}>🎵</div>}
+        </div>
+
+        <div style={{ flex:1, minWidth:0, padding:"11px 13px", display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:3, flexWrap:"wrap" }}>
+              <span style={{ fontFamily:"'Playfair Display',serif", fontSize:14, fontWeight:700, color:hov?ms.text:"#ccc", transition:"color 0.2s" }}>{rec.name}</span>
+              <span style={{ background:ms.bg, border:`1px solid ${ms.border}`, color:ms.text, fontSize:8, fontFamily:"'DM Mono',monospace", padding:"2px 6px", borderRadius:20, letterSpacing:"1.5px", textTransform:"uppercase", flexShrink:0 }}>{rec.mood}</span>
+            </div>
+            <div style={{ color:"#666", fontSize:12, fontFamily:"'Crimson Text',serif", fontStyle:"italic", lineHeight:1.35 }}>{rec.description}</div>
           </div>
-          <div style={{ color:"#666",fontSize:12,fontFamily:"'Crimson Text',serif",fontStyle:"italic",lineHeight:1.35 }}>{rec.description}</div>
-          {rec.preview?.trackName && <div style={{ color:"#333",fontSize:10,fontFamily:"'DM Mono',monospace",marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>♪ {rec.preview.trackName}{rec.preview.artist?` — ${rec.preview.artist}`:""}</div>}
-        </div>
-        <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:8 }}>
-          <PlayButton previewUrl={rec.preview?.url} mood={rec.mood?.toLowerCase()} />
-          {rec.playlist?.url && (
-            <a href={rec.playlist.url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-              style={{ display:"flex",alignItems:"center",gap:5,background:hov?"#1db954":"rgba(29,185,84,0.08)",border:"1px solid rgba(29,185,84,0.28)",borderRadius:20,padding:"5px 10px",textDecoration:"none",transition:"all 0.22s",flexShrink:0 }}>
-              <svg width={10} height={10} viewBox="0 0 24 24" fill={hov?"#000":"#1db954"}><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-              <span style={{ color:hov?"#000":"#1db954",fontSize:10,fontWeight:700,fontFamily:"'DM Mono',monospace",transition:"color 0.22s" }}>Open</span>
-            </a>
-          )}
+
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+            {/* Play in Spotify embed button */}
+            {playlistId && !rec.loading && (
+              <button onClick={e => { e.stopPropagation(); setShowEmbed(v => !v); }}
+                style={{ display:"flex", alignItems:"center", gap:5, background:showEmbed?"#1db954":ms.bg, border:`1px solid ${showEmbed?"#1db954":ms.border}`, borderRadius:20, padding:"5px 12px", cursor:"pointer", transition:"all 0.22s", flexShrink:0 }}>
+                <span style={{ fontSize:10 }}>{showEmbed ? "⏹" : "▶"}</span>
+                <span style={{ color:showEmbed?"#000":ms.text, fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", transition:"color 0.22s" }}>
+                  {showEmbed ? "Close" : "Preview"}
+                </span>
+              </button>
+            )}
+            {rec.playlist?.url && (
+              <a href={rec.playlist.url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
+                style={{ display:"flex", alignItems:"center", gap:5, background:hov?"#1db954":"rgba(29,185,84,0.08)", border:"1px solid rgba(29,185,84,0.28)", borderRadius:20, padding:"5px 10px", textDecoration:"none", transition:"all 0.22s", flexShrink:0 }}>
+                <svg width={10} height={10} viewBox="0 0 24 24" fill={hov?"#000":"#1db954"}><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                <span style={{ color:hov?"#000":"#1db954", fontSize:10, fontWeight:700, fontFamily:"'DM Mono',monospace", transition:"color 0.22s" }}>Open</span>
+              </a>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Spotify embed player — expands when Preview clicked */}
+      {showEmbed && playlistId && (
+        <div style={{ borderTop:`1px solid ${ms.border}` }}>
+          <iframe
+            src={`https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`}
+            width="100%"
+            height="152"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            style={{ display:"block" }}
+          />
+        </div>
+      )}
     </div>
   );
 }
