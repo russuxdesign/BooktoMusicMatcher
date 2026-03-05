@@ -1,16 +1,20 @@
-async function geminiJSON(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  const res = await fetch(url, {
+async function groqJSON(prompt) {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 1024,
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || "Gemini API error");
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  if (!res.ok) throw new Error(data.error?.message || "Groq API error");
+  const text = data.choices?.[0]?.message?.content || "";
   const cleaned = text.replace(/```json\n?|```\n?/g, "").trim();
   return JSON.parse(cleaned);
 }
@@ -22,7 +26,7 @@ export default async function handler(req, res) {
     const { action, query, book, chapter } = req.body;
 
     if (action === "search") {
-      const result = await geminiJSON(
+      const result = await groqJSON(
         `List 6 real books or manga matching "${query}". Only real published titles.
 Return ONLY a raw JSON array. No markdown. No explanation. No code fences.
 [{"title":"...","author":"...","genre":"...","emoji":"📖","chapterCount":0}]
@@ -34,7 +38,7 @@ Rules:
     }
 
     if (action === "recommend") {
-      const result = await geminiJSON(
+      const result = await groqJSON(
         `You are a music curator. Recommend 4 Spotify playlists for someone reading this book.
 Book: "${book.title}" by ${book.author} (${book.genre})
 ${chapter ? `Reader is on chapter: ${chapter}` : ""}
