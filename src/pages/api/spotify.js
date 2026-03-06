@@ -16,6 +16,15 @@ async function getSpotifyToken() {
   return cachedToken;
 }
 
+async function searchPlaylist(token, query) {
+  const res = await fetch(
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=playlist&limit=3`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await res.json();
+  return data.playlists?.items?.find(p => p && p.id) || null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
@@ -24,12 +33,21 @@ export default async function handler(req, res) {
     const token = await getSpotifyToken();
 
     const results = await Promise.all(queries.map(async (query) => {
-      const searchRes = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=playlist&limit=1`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const searchData = await searchRes.json();
-      const playlist = searchData.playlists?.items?.[0];
+      // Try progressively simpler queries until we find a result
+      const fallbacks = [
+        query,
+        query.split(" ").slice(0, 3).join(" "),
+        query.split(" ")[0] + " instrumental",
+        query.split(" ")[0] + " ambient",
+        "ambient instrumental",
+      ];
+
+      let playlist = null;
+      for (const attempt of fallbacks) {
+        playlist = await searchPlaylist(token, attempt);
+        if (playlist) break;
+      }
+
       if (!playlist) return { query, playlist: null, preview: null };
 
       const tracksRes = await fetch(
@@ -37,7 +55,7 @@ export default async function handler(req, res) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const tracksData = await tracksRes.json();
-      const trackWithPreview = tracksData.items?.find((item) => item?.track?.preview_url)?.track;
+      const trackWithPreview = tracksData.items?.find(item => item?.track?.preview_url)?.track;
 
       return {
         query,
