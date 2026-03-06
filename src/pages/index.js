@@ -106,7 +106,7 @@ function PlaylistCard({ rec, index }) {
         </div>
       </div>
 
-      {/* Spotify embed — autoplay on open */}
+      {/* Spotify embed — auto-clicks play after load */}
       {showEmbed && embedSrc && (
         <div style={{ borderTop:`1px solid ${ms.border}` }}>
           <iframe
@@ -118,6 +118,21 @@ function PlaylistCard({ rec, index }) {
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             loading="eager"
             style={{ display:"block" }}
+            onLoad={e => {
+              try {
+                const frame = e.target;
+                frame.focus();
+                frame.contentWindow?.focus();
+                const evt = new KeyboardEvent("keydown", { key:" ", code:"Space", keyCode:32, bubbles:true });
+                frame.contentWindow?.document?.body?.dispatchEvent(evt);
+              } catch {}
+              setTimeout(() => {
+                try {
+                  e.target.focus();
+                  e.target.contentWindow?.document?.querySelector("[data-testid='play-button']")?.click();
+                } catch {}
+              }, 800);
+            }}
           />
         </div>
       )}
