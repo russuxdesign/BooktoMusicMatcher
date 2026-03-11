@@ -17,32 +17,39 @@ const MOOD = {
 
 let gCloseEmbed = null;
 
-// Trending items — Open Library ISBN covers (free, no key, reliable)
-// ISBN format: https://covers.openlibrary.org/b/isbn/XXXXXXXXXX-L.jpg
+// Trending items — Open Library ISBN covers (free, no key)
 const TRENDING_BOOKS = [
-  { title:"Atomic Habits",               author:"James Clear",      genre:"Self-Help", emoji:"⚛️",
+  { title:"Atomic Habits",               author:"James Clear",        genre:"Self-Help", emoji:"⚛️",
     cover:"https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg" },
-  { title:"Fourth Wing",                 author:"Rebecca Yarros",   genre:"Fantasy",   emoji:"🐉",
+  { title:"Fourth Wing",                 author:"Rebecca Yarros",     genre:"Fantasy",   emoji:"🐉",
     cover:"https://covers.openlibrary.org/b/isbn/9781649374042-L.jpg" },
-  { title:"The Housemaid",               author:"Freida McFadden",  genre:"Thriller",  emoji:"🔪",
+  { title:"The Housemaid",               author:"Freida McFadden",    genre:"Thriller",  emoji:"🔪",
     cover:"https://covers.openlibrary.org/b/isbn/9781538742570-L.jpg" },
-  { title:"It Ends with Us",             author:"Colleen Hoover",   genre:"Romance",   emoji:"🌸",
+  { title:"It Ends with Us",             author:"Colleen Hoover",     genre:"Romance",   emoji:"🌸",
     cover:"https://covers.openlibrary.org/b/isbn/9781501110368-L.jpg" },
-  { title:"A Court of Thorns and Roses", author:"Sarah J. Maas",    genre:"Fantasy",   emoji:"🌹",
+  { title:"A Court of Thorns and Roses", author:"Sarah J. Maas",      genre:"Fantasy",   emoji:"🌹",
     cover:"https://covers.openlibrary.org/b/isbn/9781635575569-L.jpg" },
+  { title:"The 48 Laws of Power",        author:"Robert Greene",      genre:"Non-Fiction",emoji:"👑",
+    cover:"https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg" },
+  { title:"Dune",                        author:"Frank Herbert",       genre:"Sci-Fi",    emoji:"🏜️",
+    cover:"https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg" },
 ];
 
 const TRENDING_MANGA = [
-  { title:"One Piece Vol. 1",            author:"Eiichiro Oda",     genre:"Manga",     emoji:"🏴‍☠️",
+  { title:"One Piece Vol. 1",            author:"Eiichiro Oda",       genre:"Manga",     emoji:"🏴‍☠️",
     cover:"https://covers.openlibrary.org/b/isbn/9781569319017-L.jpg" },
-  { title:"Jujutsu Kaisen Vol. 1",       author:"Gege Akutami",     genre:"Manga",     emoji:"👁️",
+  { title:"Jujutsu Kaisen Vol. 1",       author:"Gege Akutami",       genre:"Manga",     emoji:"👁️",
     cover:"https://covers.openlibrary.org/b/isbn/9781974709083-L.jpg" },
-  { title:"Berserk Vol. 1",              author:"Kentaro Miura",    genre:"Manga",     emoji:"⚔️",
+  { title:"Berserk Vol. 1",              author:"Kentaro Miura",      genre:"Manga",     emoji:"⚔️",
     cover:"https://covers.openlibrary.org/b/isbn/9781593070205-L.jpg" },
-  { title:"Chainsaw Man Vol. 1",         author:"Tatsuki Fujimoto", genre:"Manga",     emoji:"🪚",
+  { title:"Chainsaw Man Vol. 1",         author:"Tatsuki Fujimoto",   genre:"Manga",     emoji:"🪚",
     cover:"https://covers.openlibrary.org/b/isbn/9781974709939-L.jpg" },
-  { title:"Demon Slayer Vol. 1",         author:"Koyoharu Gotouge", genre:"Manga",     emoji:"🌊",
+  { title:"Demon Slayer Vol. 1",         author:"Koyoharu Gotouge",   genre:"Manga",     emoji:"🌊",
     cover:"https://covers.openlibrary.org/b/isbn/9781974700523-L.jpg" },
+  { title:"Attack on Titan Vol. 1",      author:"Hajime Isayama",     genre:"Manga",     emoji:"⚡",
+    cover:"https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg" },
+  { title:"Naruto Vol. 1",               author:"Masashi Kishimoto",  genre:"Manga",     emoji:"🍥",
+    cover:"https://covers.openlibrary.org/b/isbn/9781569319000-L.jpg" },
 ];
 
 function CoverImg({ cover, title, size = 72 }) {
@@ -373,8 +380,28 @@ export default function Home() {
     setRecs((entry.playlists||[]).map(p=>({...p,loading:false}))); setPhase("results");
   };
 
+  // Fetch a cover image URL for any book via Open Library search
+  const fetchBookCover = async (title, author) => {
+    try {
+      const q = encodeURIComponent(`${title} ${author}`);
+      const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=1&fields=cover_i`);
+      const data = await res.json();
+      const coverId = data.docs?.[0]?.cover_i;
+      if (coverId) return `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+    } catch {}
+    return null;
+  };
+
   const runRecommend = async (book, nolyr) => {
     setError(""); setPhase("loading"); gCloseEmbed = null;
+
+    // Fetch cover for ANY book (trending ones already have it, others need lookup)
+    if (!book.cover) {
+      const fetchedCover = await fetchBookCover(book.title, book.author || "");
+      if (fetchedCover) book = { ...book, cover: fetchedCover };
+    }
+    setSelected(book);
+
     let aiResult;
     try {
       const res = await fetch("/api/books", {
