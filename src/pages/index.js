@@ -155,43 +155,53 @@ async function fetchCoverUrl(title, author) {
 }
 
 function CoverImg({ cover, covers, title, author, emoji, size = 72 }) {
-  // Static sources from the data definition
   const staticSources = covers || (cover ? [cover] : []);
-  const [staticFail, setStaticFail] = useState(0);
-  const [dynamicUrl, setDynamicUrl] = useState(null); // fetched at runtime
-  const [dynamicFailed, setDynamicFailed] = useState(false);
+  const [failIdx, setFailIdx] = useState(0);
+  const [dynUrl, setDynUrl] = useState("");
+  const fetchedRef = useRef(false);
   const fill = size === "fill";
-
-  // When all static sources fail, fetch dynamically
-  useEffect(() => {
-    if (staticFail >= staticSources.length && dynamicUrl === null && !dynamicFailed) {
-      fetchCoverUrl(title, author).then(url => {
-        if (url) setDynamicUrl(url);
-        else setDynamicFailed(true);
-      });
-    }
-  }, [staticFail, staticSources.length, title, author, dynamicUrl, dynamicFailed]);
 
   const imgStyle = fill
     ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}
     : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"};
 
-  // Show dynamic cover if static all failed
-  if (staticFail >= staticSources.length) {
-    if (dynamicUrl) return <img src={dynamicUrl} alt={title} onError={()=>setDynamicFailed(true)} style={imgStyle} />;
+  // Called when every static URL has failed — fetch the real cover from Open Library
+  const handleAllStaticFailed = () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    const q = encodeURIComponent((title||"") + (author ? " "+author : ""));
+    fetch("https://openlibrary.org/search.json?q="+q+"&limit=5&fields=cover_i,isbn")
+      .then(r => r.json())
+      .then(data => {
+        for (const doc of (data.docs||[])) {
+          if (doc.cover_i) { setDynUrl("https://covers.openlibrary.org/b/id/"+doc.cover_i+"-L.jpg"); return; }
+        }
+        for (const doc of (data.docs||[])) {
+          for (const isbn of (doc.isbn||[]).slice(0,3)) {
+            setDynUrl("https://covers.openlibrary.org/b/isbn/"+isbn+"-L.jpg"); return;
+          }
+        }
+      })
+      .catch(() => {});
+  };
+
+  const allStaticFailed = failIdx >= staticSources.length;
+
+  if (allStaticFailed) {
+    if (dynUrl) return <img src={dynUrl} alt={title} onError={()=>setDynUrl("")} style={imgStyle} />;
+    handleAllStaticFailed();
     return <CoverImgFallback emoji={emoji} title={title} fill={fill} size={size} />;
   }
 
   return (
     <img
-      src={staticSources[staticFail]}
+      src={staticSources[failIdx]}
       alt={title}
-      onError={() => setStaticFail(n => n + 1)}
+      onError={() => setFailIdx(n => n + 1)}
       style={imgStyle}
     />
   );
 }
-
 
 // ── SHARE ICONS (top-level — never defined inside a component) ──
 function ShareIgIcon() { return <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1" fill="#E1306C"/></svg>; }
