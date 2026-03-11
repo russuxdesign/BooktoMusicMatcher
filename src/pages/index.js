@@ -97,34 +97,70 @@ function weeklySlice(arr, count) {
 const TRENDING_BOOKS = weeklySlice(ALL_BOOKS, 7);
 const TRENDING_MANGA = weeklySlice(ALL_MANGA, 7);
 
-function CoverImg({ cover, covers, title, size = 72 }) {
+// Generate a canvas-based placeholder so thumbnails are NEVER blank
+function makePlaceholder(title, emoji) {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 120; canvas.height = 180;
+    const ctx = canvas.getContext("2d");
+    // Background gradient
+    const grad = ctx.createLinearGradient(0,0,120,180);
+    grad.addColorStop(0,"#1a1a2e"); grad.addColorStop(1,"#16213e");
+    ctx.fillStyle = grad; ctx.fillRect(0,0,120,180);
+    // Border
+    ctx.strokeStyle = "rgba(232,168,56,0.4)"; ctx.lineWidth = 2;
+    ctx.strokeRect(2,2,116,176);
+    // Emoji
+    ctx.font = "36px serif"; ctx.textAlign = "center";
+    ctx.fillText(emoji || "📖", 60, 80);
+    // Title words
+    ctx.fillStyle = "#c8c8b8"; ctx.font = "bold 11px sans-serif";
+    const words = (title || "").replace(" Vol. 1","").split(" ");
+    const lines = [];
+    let cur = "";
+    words.forEach(w => { if ((cur+" "+w).trim().length > 12) { lines.push(cur.trim()); cur = w; } else cur = (cur+" "+w).trim(); });
+    if (cur) lines.push(cur.trim());
+    lines.slice(0,3).forEach((l,i) => ctx.fillText(l, 60, 110 + i*16));
+    return canvas.toDataURL();
+  } catch { return null; }
+}
+
+function CoverImg({ cover, covers, title, emoji, size = 72 }) {
   const sources = covers || (cover ? [cover] : []);
   const [idx, setIdx] = useState(0);
+  const [placeholder, setPlaceholder] = useState(null);
   const fill = size === "fill";
 
-  const fallbackStyle = fill
-    ? { position:"absolute",inset:0,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:4 }
-    : { width:size,height:size*1.4,background:"rgba(255,255,255,0.06)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:4 };
+  // When all URLs fail, generate canvas placeholder
+  useEffect(() => {
+    if (idx >= sources.length && sources.length > 0) {
+      setPlaceholder(makePlaceholder(title, emoji));
+    }
+  }, [idx, sources.length, title, emoji]);
 
-  if (!sources.length || idx >= sources.length) {
-    return (
-      <div style={fallbackStyle}>
-        <span style={{ fontSize:20 }}>📖</span>
-        <span style={{ color:"#555",fontSize:8,fontFamily:"monospace",textAlign:"center",padding:"0 4px",lineHeight:1.2 }}>{title?.split(" ").slice(0,2).join(" ")}</span>
-      </div>
-    );
+  const allFailed = idx >= sources.length;
+
+  const containerStyle = fill
+    ? { position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#12121e" }
+    : { width:size,height:size*1.4,display:"flex",alignItems:"center",justifyContent:"center",background:"#12121e",borderRadius:6 };
+
+  if (allFailed) {
+    return placeholder
+      ? <img src={placeholder} alt={title} style={ fill ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"} : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"}} />
+      : <div style={{...containerStyle,flexDirection:"column",gap:4}}>
+          <span style={{fontSize:20}}>{emoji||"📖"}</span>
+          <span style={{color:"#666",fontSize:8,fontFamily:"monospace",textAlign:"center",padding:"0 4px",lineHeight:1.2}}>{title?.split(" ").slice(0,2).join(" ")}</span>
+        </div>;
   }
-
-  const imgStyle = fill
-    ? { position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block" }
-    : { width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block" };
 
   return (
     <img
       src={sources[idx]}
       alt={title}
       onError={() => setIdx(i => i + 1)}
-      style={imgStyle}
+      style={ fill
+        ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}
+        : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"} }
     />
   );
 }
@@ -384,7 +420,7 @@ function TrendingRow({ label, items, onPick }) {
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px) scale(1.04)"}
             onMouseLeave={e=>e.currentTarget.style.transform="none"}>
             <div style={{ borderRadius:7,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 4px 12px rgba(0,0,0,0.5)",marginBottom:5,aspectRatio:"2/3",position:"relative" }}>
-              <CoverImg covers={item.covers} cover={item.cover} title={item.title} size="fill" />
+              <CoverImg covers={item.covers} cover={item.cover} title={item.title} emoji={item.emoji} size="fill" />
             </div>
             <div style={{ color:"#c8c8b8",fontSize:9,fontFamily:"'Crimson Text',serif",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.title.replace(" Vol. 1","")}</div>
           </div>
@@ -681,18 +717,11 @@ export default function Home() {
           {/* RESULTS */}
           {phase==="results" && (
             <div style={{ animation:"fadeUp 0.5s ease both" }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:26 }}>
+              <div style={{ marginBottom:26 }}>
                 <button onClick={reset}
                   style={{ background:"transparent",border:"none",color:"#888",fontSize:11,fontFamily:"'DM Mono',monospace",cursor:"pointer",letterSpacing:1,padding:0,display:"flex",alignItems:"center",gap:6,transition:"color 0.18s" }}
                   onMouseEnter={e=>e.currentTarget.style.color="#e8a838"}
                   onMouseLeave={e=>e.currentTarget.style.color="#888"}>← search again</button>
-                <button onClick={()=>setShareOpen(true)}
-                  style={{ display:"flex",alignItems:"center",gap:6,background:"rgba(232,168,56,0.1)",border:"1px solid rgba(232,168,56,0.3)",borderRadius:20,padding:"7px 14px",cursor:"pointer",transition:"all 0.2s" }}
-                  onMouseEnter={e=>{e.currentTarget.style.background="rgba(232,168,56,0.2)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.background="rgba(232,168,56,0.1)";}}>
-                  <span style={{ fontSize:12 }}>↗</span>
-                  <span style={{ color:"#ffcc55",fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace" }}>Share Soundtrack</span>
-                </button>
               </div>
 
               <div style={{ display:"flex",gap:14,alignItems:"center",marginBottom:20 }}>
