@@ -155,52 +155,49 @@ async function fetchCoverUrl(title, author) {
 }
 
 function CoverImg({ cover, covers, title, author, emoji, size = 72 }) {
-  const staticSources = covers || (cover ? [cover] : []);
-  const [failIdx, setFailIdx] = useState(0);
-  const [dynUrl, setDynUrl] = useState("");
-  const fetchedRef = useRef(false);
   const fill = size === "fill";
+  const staticSrcs = covers || (cover ? [cover] : []);
+  const [idx, setIdx] = useState(0);
+  const [dynSrc, setDynSrc] = useState(null);
+  const fetched = useRef(false);
+  const allFailed = idx >= staticSrcs.length;
 
-  const imgStyle = fill
-    ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}
-    : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"};
-
-  // Called when every static URL has failed — fetch the real cover from Open Library
-  const handleAllStaticFailed = () => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    const q = encodeURIComponent((title||"") + (author ? " "+author : ""));
-    fetch("https://openlibrary.org/search.json?q="+q+"&limit=5&fields=cover_i,isbn")
-      .then(r => r.json())
-      .then(data => {
-        for (const doc of (data.docs||[])) {
-          if (doc.cover_i) { setDynUrl("https://covers.openlibrary.org/b/id/"+doc.cover_i+"-L.jpg"); return; }
+  useEffect(() => {
+    if (!allFailed || fetched.current) return;
+    fetched.current = true;
+    const q = encodeURIComponent((title || "") + (author ? " " + author : ""));
+    fetch("https://openlibrary.org/search.json?q=" + q + "&limit=5&fields=cover_i,isbn")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var docs = data.docs || [];
+        for (var i = 0; i < docs.length; i++) {
+          if (docs[i].cover_i) {
+            setDynSrc("https://covers.openlibrary.org/b/id/" + docs[i].cover_i + "-L.jpg");
+            return;
+          }
         }
-        for (const doc of (data.docs||[])) {
-          for (const isbn of (doc.isbn||[]).slice(0,3)) {
-            setDynUrl("https://covers.openlibrary.org/b/isbn/"+isbn+"-L.jpg"); return;
+        for (var j = 0; j < docs.length; j++) {
+          var isbns = docs[j].isbn || [];
+          if (isbns.length > 0) {
+            setDynSrc("https://covers.openlibrary.org/b/isbn/" + isbns[0] + "-L.jpg");
+            return;
           }
         }
       })
-      .catch(() => {});
-  };
+      .catch(function() {});
+  }, [allFailed, title, author]);
 
-  const allStaticFailed = failIdx >= staticSources.length;
+  var imgStyle = fill
+    ? { position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }
+    : { width:size, height:size*1.4, objectFit:"cover", borderRadius:6, display:"block" };
 
-  if (allStaticFailed) {
-    if (dynUrl) return <img src={dynUrl} alt={title} onError={()=>setDynUrl("")} style={imgStyle} />;
-    handleAllStaticFailed();
-    return <CoverImgFallback emoji={emoji} title={title} fill={fill} size={size} />;
+  if (!allFailed) {
+    return <img src={staticSrcs[idx]} alt={title} onError={function(){setIdx(function(n){return n+1;});}} style={imgStyle} />;
   }
-
-  return (
-    <img
-      src={staticSources[failIdx]}
-      alt={title}
-      onError={() => setFailIdx(n => n + 1)}
-      style={imgStyle}
-    />
-  );
+  if (dynSrc) {
+    return <img src={dynSrc} alt={title} onError={function(){setDynSrc(null);}} style={imgStyle} />;
+  }
+  return <CoverImgFallback emoji={emoji} title={title} fill={fill} size={size} />;
 }
 
 // ── SHARE ICONS (top-level — never defined inside a component) ──
@@ -305,6 +302,29 @@ function ShareModal({ book, recs, gradient, onClose }) {
         <button onClick={copyLink} style={{ width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,cursor:"pointer",color:copying?"#6ee896":"#bbb",fontFamily:"monospace",fontSize:12,transition:"all 0.2s" }}>
           {copying?"✓ Copied!":"🔗 Copy link"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── TRENDING ROW ──
+function TrendingRow({ label, items, onPick }) {
+  const count = items.length;
+  return (
+    <div style={{ marginTop:10 }}>
+      <div style={{ color:"#888",fontSize:9,letterSpacing:3,textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:10 }}>{label}</div>
+      <div style={{ display:"flex",justifyContent:"space-between",gap:6 }}>
+        {items.map((item,i) => (
+          <div key={i} onClick={()=>onPick(item)}
+            style={{ flex:1,minWidth:0,cursor:"pointer",transition:"transform 0.18s",textAlign:"center" }}
+            onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px) scale(1.04)"}
+            onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+            <div style={{ borderRadius:7,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 4px 12px rgba(0,0,0,0.5)",marginBottom:5,aspectRatio:"2/3",position:"relative" }}>
+              <CoverImg covers={item.covers} cover={item.cover} title={item.title} author={item.author} emoji={item.emoji} size="fill" />
+            </div>
+            <div style={{ color:"#c8c8b8",fontSize:9,fontFamily:"'Crimson Text',serif",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.title.replace(" Vol. 1","")}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
