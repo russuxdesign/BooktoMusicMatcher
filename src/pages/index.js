@@ -77,8 +77,7 @@ const ALL_MANGA = [
     covers:["https://covers.openlibrary.org/b/isbn/9781421501680-L.jpg","https://covers.openlibrary.org/b/id/8231856-L.jpg"] },
   { title:"Vinland Saga Vol. 1",         author:"Makoto Yukimura",     genre:"Manga",      emoji:"🪓",
     covers:["https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg","https://covers.openlibrary.org/b/id/8228023-L.jpg"] },
-  { title:"Bleach Vol. 1",               author:"Tite Kubo",           genre:"Manga",      emoji:"🌙",
-    covers:["https://covers.openlibrary.org/b/isbn/9781591161899-L.jpg","https://covers.openlibrary.org/b/isbn/9781421504513-L.jpg","https://covers.openlibrary.org/b/isbn/9781421528458-L.jpg","https://covers.openlibrary.org/b/id/240726-L.jpg","https://covers.openlibrary.org/b/id/8231856-L.jpg"] },
+  { title:"Bleach Vol. 1", author:"Tite Kubo", genre:"Manga", emoji:"🌙", covers:[] },
 ];
 
 // Seeded shuffle — same result for the whole week, changes every Monday
@@ -236,14 +235,18 @@ function ShareModal({ book, recs, gradient, onClose }) {
     setTimeout(() => setCopying(false), 2000);
   };
 
-  const shareTargets = [
-    { label:"Instagram",   Icon:ShareIgIcon, color:"#E1306C", url:null },
-    { label:"TikTok",      Icon:ShareTkIcon, color:"#010101", url:null },
-    { label:"WhatsApp",    Icon:ShareWaIcon, color:"#25D366", url:`https://wa.me/?text=${encodeURIComponent(`🎵 My reading soundtrack for "${book.title}" — find yours at https://${siteUrl}`)}` },
-    { label:"Facebook",    Icon:ShareFbIcon, color:"#1877F2", url:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://${siteUrl}`)}` },
-    { label:"Messenger",   Icon:ShareMsIcon, color:"#0084FF", url:`https://www.facebook.com/dialog/send?link=${encodeURIComponent(`https://${siteUrl}`)}&app_id=181477555943165` },
-    { label:"X / Twitter", Icon:ShareXIcon,  color:"#000000", url:`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🎵 My reading soundtrack for "${book.title}" — find yours at https://${siteUrl}`)}` },
-  ];
+
+    const playlistNames = recs.filter(r=>r.name).slice(0,4).map((r,i)=>`${i+1}. ${r.name}`).join("\n");
+    const shareText = `🎵 Reading "${book.title}" by ${book.author||""}?\nHere are 4 playlists to match:\n${playlistNames}\n\nFind yours → https://${siteUrl}`;
+    const shareUrl = `https://${siteUrl}`;
+    const shareTargets = [
+      { label:"Instagram",   Icon:ShareIgIcon, color:"#E1306C", action:"instagram" },
+      { label:"TikTok",      Icon:ShareTkIcon, color:"#010101", action:"tiktok" },
+      { label:"WhatsApp",    Icon:ShareWaIcon, color:"#25D366", url:`https://wa.me/?text=${encodeURIComponent(shareText)}` },
+      { label:"Facebook",    Icon:ShareFbIcon, color:"#1877F2", url:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}` },
+      { label:"Messenger",   Icon:ShareMsIcon, color:"#0084FF", url:`https://www.facebook.com/dialog/send?link=${encodeURIComponent(shareUrl)}&app_id=181477555943165` },
+      { label:"X / Twitter", Icon:ShareXIcon,  color:"#000000", url:`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}` },
+    ]
 
   return (
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)" }}>
@@ -282,14 +285,24 @@ function ShareModal({ book, recs, gradient, onClose }) {
           </div>
         </div>
 
-        <button onClick={downloadImage} style={{ width:"100%",padding:"12px 0",background:"linear-gradient(135deg,#e8a838,#cc9030)",border:"none",borderRadius:10,cursor:"pointer",color:"#000",fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:16 }}>
+        <button onClick={downloadImage} style={{ width:"100%",padding:"12px 0",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.18)",borderRadius:10,cursor:"pointer",color:"#e0e0d8",fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:600,marginBottom:16,letterSpacing:1 }}>
           {downloaded?"✓ Downloaded!":"⬇ Download Image"}
         </button>
 
         <div style={{ color:"#888",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontFamily:"monospace",marginBottom:10 }}>Share to</div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16 }}>
           {shareTargets.map(t => (
-            <button key={t.label} onClick={()=>{ if(t.url) window.open(t.url,"_blank"); else downloadImage(); }}
+            <button key={t.label} onClick={()=>{
+                if (t.action === "instagram") {
+                  const start = Date.now();
+                  window.location.href = "instagram://story-camera";
+                  setTimeout(() => { if (Date.now() - start < 2000) downloadImage(); }, 1200);
+                } else if (t.action === "tiktok") {
+                  downloadImage();
+                } else if (t.url) {
+                  window.open(t.url, "_blank");
+                }
+              }}
               style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:"10px 6px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,cursor:"pointer",transition:"all 0.18s" }}
               onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.09)";e.currentTarget.style.borderColor=t.color+"88";}}
               onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.04)";e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";}}>
@@ -309,14 +322,21 @@ function ShareModal({ book, recs, gradient, onClose }) {
 
 // ── TRENDING ROW ──
 function TrendingRow({ label, items, onPick }) {
-  const count = items.length;
   return (
     <div style={{ marginTop:10 }}>
       <div style={{ color:"#888",fontSize:9,letterSpacing:3,textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:10 }}>{label}</div>
-      <div style={{ display:"flex",justifyContent:"space-between",gap:6 }}>
+      <style>{`
+        .trend-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;}
+        .trend-tile{flex:1;min-width:0;cursor:pointer;transition:transform 0.18s;text-align:center;}
+        @media(max-width:600px){
+          .trend-row{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+          .trend-row::-webkit-scrollbar{display:none;}
+          .trend-tile{flex:0 0 80px;min-width:80px;}
+        }
+      `}</style>
+      <div className="trend-row">
         {items.map((item,i) => (
-          <div key={i} onClick={()=>onPick(item)}
-            style={{ flex:1,minWidth:0,cursor:"pointer",transition:"transform 0.18s",textAlign:"center" }}
+          <div key={i} onClick={()=>onPick(item)} className="trend-tile"
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px) scale(1.04)"}
             onMouseLeave={e=>e.currentTarget.style.transform="none"}>
             <div style={{ borderRadius:7,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 4px 12px rgba(0,0,0,0.5)",marginBottom:5,aspectRatio:"2/3",position:"relative" }}>
@@ -330,7 +350,6 @@ function TrendingRow({ label, items, onPick }) {
   );
 }
 
-// ── PLAYLIST CARD ──
 function PlaylistCard({ rec, index, onShare }) {
   const [hov, setHov] = useState(false);
   const [showEmbed, setShowEmbed] = useState(false);
