@@ -97,44 +97,55 @@ function weeklySlice(arr, count) {
 const TRENDING_BOOKS = weeklySlice(ALL_BOOKS, 7);
 const TRENDING_MANGA = weeklySlice(ALL_MANGA, 7);
 
+function CoverImgFallback({ emoji, title, fill, size }) {
+  const COLORS = {
+    "🌙":"#1a1a3e,#2a2a5e", "⚔️":"#3e1a1a,#5e2a2a", "🏴‍☠️":"#0a1628,#1a2e4a",
+    "👁️":"#1a0a28,#3a1a4e", "🪚":"#281a0a,#4e3a1a", "🌊":"#0a2028,#1a3a4e",
+    "⚡":"#28280a,#4e4e1a", "🍥":"#280a0a,#4e1a1a", "🐉":"#0a280a,#1a4e1a",
+    "💥":"#280a0a,#5e1a1a", "💀":"#141414,#1e1e1e", "📓":"#0a0a28,#1a1a4e",
+    "🪓":"#1e180a,#3e300a", "⚗️":"#0a1e1e,#1a3e3e", "🌸":"#2e0a1a,#4e1a2e",
+    "🌹":"#2e0808,#4e1010", "⚛️":"#0a1e2e,#1a3e4e", "🐉":"#0a2e0a,#1a4e1a",
+    "🏹":"#1e1e0a,#3e3e1a", "🦴":"#2e2e2e,#1a1a1a", "🧙":"#1a0a2e,#2e1a4e",
+    "✨":"#2e2a0a,#4e461a", "🗡️":"#1e1e2e,#2e2e4e", "🥂":"#2e280a,#4e401a",
+  };
+  const [c1, c2] = (COLORS[emoji] || "#1a1a2e,#2e2e4e").split(",");
+  const baseStyle = {
+    background: `linear-gradient(145deg,${c1},${c2})`,
+    display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center", gap: 6,
+  };
+  const style = fill
+    ? { ...baseStyle, position:"absolute", inset:0 }
+    : { ...baseStyle, width:size, height:size*1.4, borderRadius:6 };
+  return (
+    <div style={style}>
+      <span style={{ fontSize: fill ? 28 : Math.max(14, size*0.33) }}>{emoji || "📖"}</span>
+      <span style={{ color:"#9090b8", fontSize: fill ? 9 : 7, fontFamily:"monospace",
+        textAlign:"center", padding:"0 5px", lineHeight:1.3,
+        display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+        {(title||"").replace(" Vol. 1","")}
+      </span>
+    </div>
+  );
+}
+
 function CoverImg({ cover, covers, title, emoji, size = 72 }) {
   const sources = covers || (cover ? [cover] : []);
-  const [idx, setIdx] = useState(0);
+  const [failCount, setFailCount] = useState(0);
   const fill = size === "fill";
 
-  // Pure JSX fallback — always visible, never blank
-  const Fallback = () => {
-    const colors = {
-      "🌙":"#1a1a3e,#2a2a5e","⚔️":"#3e1a1a,#5e2a2a","🏴‍☠️":"#0a1628,#1a2e4a",
-      "👁️":"#1a0a28,#3a1a4e","🪚":"#281a0a,#4e3a1a","🌊":"#0a2028,#1a3a4e",
-      "⚡":"#28280a,#4e4e1a","🍥":"#280a0a,#4e1a1a","🐉":"#0a280a,#1a4e1a",
-      "💥":"#280a0a,#5e1a1a","💀":"#0a0a0a,#1e1e1e","📓":"#0a0a28,#1a1a4e",
-      "🪓":"#1e180a,#3e300a","⚗️":"#0a1e1e,#1a3e3e",
-    };
-    const [c1,c2] = (colors[emoji]||"#1a1a2e,#2e2e4e").split(",");
-    const style = fill
-      ? { position:"absolute",inset:0,background:`linear-gradient(145deg,${c1},${c2})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6 }
-      : { width:size,height:size*1.4,background:`linear-gradient(145deg,${c1},${c2})`,borderRadius:6,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6 };
-    return (
-      <div style={style}>
-        <span style={{fontSize: fill ? 28 : Math.max(16, size*0.35)}}>{emoji||"📖"}</span>
-        <span style={{color:"#a0a0c0",fontSize: fill ? 9 : 7,fontFamily:"monospace",textAlign:"center",padding:"0 6px",lineHeight:1.3,maxWidth:"100%",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical"}}>
-          {(title||"").replace(" Vol. 1","")}
-        </span>
-      </div>
-    );
-  };
-
-  if (!sources.length || idx >= sources.length) return <Fallback />;
+  if (!sources.length || failCount >= sources.length) {
+    return <CoverImgFallback emoji={emoji} title={title} fill={fill} size={size} />;
+  }
 
   return (
     <img
-      src={sources[idx]}
+      src={sources[failCount]}
       alt={title}
-      onError={() => setIdx(i => i + 1)}
-      style={ fill
-        ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}
-        : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"} }
+      onError={() => setFailCount(n => n + 1)}
+      style={fill
+        ? { position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }
+        : { width:size, height:size*1.4, objectFit:"cover", borderRadius:6, display:"block" }}
     />
   );
 }
