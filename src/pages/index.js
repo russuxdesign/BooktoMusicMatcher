@@ -17,56 +17,114 @@ const MOOD = {
 
 let gCloseEmbed = null;
 
-// Trending items — Open Library ISBN covers (free, no key)
-const TRENDING_BOOKS = [
-  { title:"Atomic Habits",               author:"James Clear",        genre:"Self-Help", emoji:"⚛️",
-    cover:"https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg" },
-  { title:"Fourth Wing",                 author:"Rebecca Yarros",     genre:"Fantasy",   emoji:"🐉",
-    cover:"https://covers.openlibrary.org/b/isbn/9781649374042-L.jpg" },
-  { title:"The Housemaid",               author:"Freida McFadden",    genre:"Thriller",  emoji:"🔪",
-    cover:"https://covers.openlibrary.org/b/isbn/9781538742570-L.jpg" },
-  { title:"It Ends with Us",             author:"Colleen Hoover",     genre:"Romance",   emoji:"🌸",
-    cover:"https://covers.openlibrary.org/b/isbn/9781501110368-L.jpg" },
-  { title:"A Court of Thorns and Roses", author:"Sarah J. Maas",      genre:"Fantasy",   emoji:"🌹",
-    cover:"https://covers.openlibrary.org/b/isbn/9781635575569-L.jpg" },
+// ── WEEKLY ROTATION ──
+// All books/manga pools — rotates every week automatically
+const ALL_BOOKS = [
+  { title:"Atomic Habits",               author:"James Clear",        genre:"Self-Help",  emoji:"⚛️",
+    covers:["https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg","https://covers.openlibrary.org/b/id/8739161-L.jpg"] },
+  { title:"Fourth Wing",                 author:"Rebecca Yarros",     genre:"Fantasy",    emoji:"🐉",
+    covers:["https://covers.openlibrary.org/b/isbn/9781649374042-L.jpg","https://covers.openlibrary.org/b/id/12808052-L.jpg"] },
+  { title:"The Housemaid",               author:"Freida McFadden",    genre:"Thriller",   emoji:"🔪",
+    covers:["https://covers.openlibrary.org/b/isbn/9781538742570-L.jpg","https://covers.openlibrary.org/b/id/12545916-L.jpg"] },
+  { title:"It Ends with Us",             author:"Colleen Hoover",     genre:"Romance",    emoji:"🌸",
+    covers:["https://covers.openlibrary.org/b/isbn/9781501110368-L.jpg","https://covers.openlibrary.org/b/id/9257333-L.jpg"] },
+  { title:"A Court of Thorns and Roses", author:"Sarah J. Maas",      genre:"Fantasy",    emoji:"🌹",
+    covers:["https://covers.openlibrary.org/b/isbn/9781635575569-L.jpg","https://covers.openlibrary.org/b/id/8228691-L.jpg"] },
   { title:"The 48 Laws of Power",        author:"Robert Greene",      genre:"Non-Fiction",emoji:"👑",
-    cover:"https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg" },
-  { title:"Dune",                        author:"Frank Herbert",       genre:"Sci-Fi",    emoji:"🏜️",
-    cover:"https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg" },
+    covers:["https://covers.openlibrary.org/b/isbn/9780140280197-L.jpg","https://covers.openlibrary.org/b/id/8231032-L.jpg"] },
+  { title:"Dune",                        author:"Frank Herbert",       genre:"Sci-Fi",     emoji:"🏜️",
+    covers:["https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg","https://covers.openlibrary.org/b/id/8231856-L.jpg"] },
+  { title:"Harry Potter and the Sorcerer's Stone", author:"J.K. Rowling", genre:"Fantasy", emoji:"🧙",
+    covers:["https://covers.openlibrary.org/b/isbn/9780439708180-L.jpg","https://covers.openlibrary.org/b/id/8228691-L.jpg"] },
+  { title:"The Alchemist",               author:"Paulo Coelho",        genre:"Fiction",    emoji:"✨",
+    covers:["https://covers.openlibrary.org/b/isbn/9780062315007-L.jpg","https://covers.openlibrary.org/b/id/8231032-L.jpg"] },
+  { title:"Throne of Glass",             author:"Sarah J. Maas",       genre:"Fantasy",    emoji:"🗡️",
+    covers:["https://covers.openlibrary.org/b/isbn/9781599906959-L.jpg","https://covers.openlibrary.org/b/id/7892742-L.jpg"] },
+  { title:"The Great Gatsby",            author:"F. Scott Fitzgerald",  genre:"Classic",   emoji:"🥂",
+    covers:["https://covers.openlibrary.org/b/isbn/9780743273565-L.jpg","https://covers.openlibrary.org/b/id/7222246-L.jpg"] },
+  { title:"1984",                        author:"George Orwell",        genre:"Dystopia",  emoji:"👁️",
+    covers:["https://covers.openlibrary.org/b/isbn/9780451524935-L.jpg","https://covers.openlibrary.org/b/id/8575708-L.jpg"] },
+  { title:"The Hunger Games",            author:"Suzanne Collins",      genre:"Dystopia",  emoji:"🏹",
+    covers:["https://covers.openlibrary.org/b/isbn/9780439023481-L.jpg","https://covers.openlibrary.org/b/id/8228023-L.jpg"] },
+  { title:"Sapiens",                     author:"Yuval Noah Harari",    genre:"Non-Fiction",emoji:"🦴",
+    covers:["https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg","https://covers.openlibrary.org/b/id/8739161-L.jpg"] },
 ];
 
-const TRENDING_MANGA = [
-  { title:"One Piece Vol. 1",            author:"Eiichiro Oda",       genre:"Manga",     emoji:"🏴‍☠️",
-    cover:"https://covers.openlibrary.org/b/isbn/9781569319017-L.jpg" },
-  { title:"Jujutsu Kaisen Vol. 1",       author:"Gege Akutami",       genre:"Manga",     emoji:"👁️",
-    cover:"https://covers.openlibrary.org/b/isbn/9781974709083-L.jpg" },
-  { title:"Berserk Vol. 1",              author:"Kentaro Miura",      genre:"Manga",     emoji:"⚔️",
-    cover:"https://covers.openlibrary.org/b/isbn/9781593070205-L.jpg" },
-  { title:"Chainsaw Man Vol. 1",         author:"Tatsuki Fujimoto",   genre:"Manga",     emoji:"🪚",
-    cover:"https://covers.openlibrary.org/b/isbn/9781974709939-L.jpg" },
-  { title:"Demon Slayer Vol. 1",         author:"Koyoharu Gotouge",   genre:"Manga",     emoji:"🌊",
-    cover:"https://covers.openlibrary.org/b/isbn/9781974700523-L.jpg" },
-  { title:"Attack on Titan Vol. 1",      author:"Hajime Isayama",     genre:"Manga",     emoji:"⚡",
-    cover:"https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg" },
-  { title:"Naruto Vol. 1",               author:"Masashi Kishimoto",  genre:"Manga",     emoji:"🍥",
-    cover:"https://covers.openlibrary.org/b/isbn/9781569319000-L.jpg" },
+const ALL_MANGA = [
+  { title:"One Piece Vol. 1",            author:"Eiichiro Oda",        genre:"Manga",      emoji:"🏴‍☠️",
+    covers:["https://covers.openlibrary.org/b/isbn/9781569319017-L.jpg","https://covers.openlibrary.org/b/id/8362550-L.jpg"] },
+  { title:"Jujutsu Kaisen Vol. 1",       author:"Gege Akutami",        genre:"Manga",      emoji:"👁️",
+    covers:["https://covers.openlibrary.org/b/isbn/9781974709083-L.jpg","https://covers.openlibrary.org/b/isbn/9781974720002-L.jpg","https://covers.openlibrary.org/b/id/10521849-L.jpg"] },
+  { title:"Berserk Vol. 1",              author:"Kentaro Miura",       genre:"Manga",      emoji:"⚔️",
+    covers:["https://covers.openlibrary.org/b/isbn/9781593070205-L.jpg","https://covers.openlibrary.org/b/id/8502396-L.jpg"] },
+  { title:"Chainsaw Man Vol. 1",         author:"Tatsuki Fujimoto",    genre:"Manga",      emoji:"🪚",
+    covers:["https://covers.openlibrary.org/b/isbn/9781974709939-L.jpg","https://covers.openlibrary.org/b/id/12148266-L.jpg"] },
+  { title:"Demon Slayer Vol. 1",         author:"Koyoharu Gotouge",    genre:"Manga",      emoji:"🌊",
+    covers:["https://covers.openlibrary.org/b/isbn/9781974700523-L.jpg","https://covers.openlibrary.org/b/id/10361629-L.jpg"] },
+  { title:"Attack on Titan Vol. 1",      author:"Hajime Isayama",      genre:"Manga",      emoji:"⚡",
+    covers:["https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg","https://covers.openlibrary.org/b/id/8504671-L.jpg"] },
+  { title:"Naruto Vol. 1",               author:"Masashi Kishimoto",   genre:"Manga",      emoji:"🍥",
+    covers:["https://covers.openlibrary.org/b/isbn/9781569319000-L.jpg","https://covers.openlibrary.org/b/id/8362550-L.jpg"] },
+  { title:"Dragon Ball Vol. 1",          author:"Akira Toriyama",      genre:"Manga",      emoji:"🐉",
+    covers:["https://covers.openlibrary.org/b/isbn/9781569319574-L.jpg","https://covers.openlibrary.org/b/id/8228691-L.jpg"] },
+  { title:"Fullmetal Alchemist Vol. 1",  author:"Hiromu Arakawa",      genre:"Manga",      emoji:"⚗️",
+    covers:["https://covers.openlibrary.org/b/isbn/9781591169208-L.jpg","https://covers.openlibrary.org/b/id/8231032-L.jpg"] },
+  { title:"My Hero Academia Vol. 1",     author:"Kohei Horikoshi",     genre:"Manga",      emoji:"💥",
+    covers:["https://covers.openlibrary.org/b/isbn/9781421582696-L.jpg","https://covers.openlibrary.org/b/id/9257333-L.jpg"] },
+  { title:"Tokyo Ghoul Vol. 1",          author:"Sui Ishida",          genre:"Manga",      emoji:"💀",
+    covers:["https://covers.openlibrary.org/b/isbn/9781421580364-L.jpg","https://covers.openlibrary.org/b/id/8504671-L.jpg"] },
+  { title:"Death Note Vol. 1",           author:"Tsugumi Ohba",        genre:"Manga",      emoji:"📓",
+    covers:["https://covers.openlibrary.org/b/isbn/9781421501680-L.jpg","https://covers.openlibrary.org/b/id/8231856-L.jpg"] },
+  { title:"Vinland Saga Vol. 1",         author:"Makoto Yukimura",     genre:"Manga",      emoji:"🪓",
+    covers:["https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg","https://covers.openlibrary.org/b/id/8228023-L.jpg"] },
+  { title:"Bleach Vol. 1",               author:"Tite Kubo",           genre:"Manga",      emoji:"🌙",
+    covers:["https://covers.openlibrary.org/b/isbn/9781591161899-L.jpg","https://covers.openlibrary.org/b/id/7892742-L.jpg"] },
 ];
 
-function CoverImg({ cover, title, size = 72 }) {
-  const [err, setErr] = useState(false);
-  if (err || !cover) {
+// Seeded shuffle — same result for the whole week, changes every Monday
+function weeklySlice(arr, count) {
+  const now = new Date();
+  const weekNum = Math.floor((now - new Date(now.getFullYear(), 0, 1)) / 604800000);
+  const seed = now.getFullYear() * 100 + weekNum;
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = ((seed * 9301 + 49297 * (i + 1)) % 233280) % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled.slice(0, count);
+}
+
+const TRENDING_BOOKS = weeklySlice(ALL_BOOKS, 7);
+const TRENDING_MANGA = weeklySlice(ALL_MANGA, 7);
+
+function CoverImg({ cover, covers, title, size = 72 }) {
+  const sources = covers || (cover ? [cover] : []);
+  const [idx, setIdx] = useState(0);
+  const fill = size === "fill";
+
+  const fallbackStyle = fill
+    ? { position:"absolute",inset:0,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:4 }
+    : { width:size,height:size*1.4,background:"rgba(255,255,255,0.06)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:4 };
+
+  if (!sources.length || idx >= sources.length) {
     return (
-      <div style={{ width:size, height:size*1.4, background:"rgba(255,255,255,0.05)", borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center", fontSize:24 }}>
-        📖
+      <div style={fallbackStyle}>
+        <span style={{ fontSize:20 }}>📖</span>
+        <span style={{ color:"#555",fontSize:8,fontFamily:"monospace",textAlign:"center",padding:"0 4px",lineHeight:1.2 }}>{title?.split(" ").slice(0,2).join(" ")}</span>
       </div>
     );
   }
+
+  const imgStyle = fill
+    ? { position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block" }
+    : { width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block" };
+
   return (
     <img
-      src={cover}
+      src={sources[idx]}
       alt={title}
-      onError={() => setErr(true)}
-      style={{ width:size, height:size*1.4, objectFit:"cover", borderRadius:6, display:"block" }}
+      onError={() => setIdx(i => i + 1)}
+      style={imgStyle}
     />
   );
 }
@@ -315,25 +373,27 @@ function PlaylistCard({ rec, index, onShare, book, recs, gradient }) {
 
 // ── TRENDING ROW ──
 function TrendingRow({ label, items, onPick }) {
+  const count = items.length;
   return (
     <div style={{ marginTop:10 }}>
       <div style={{ color:"#888",fontSize:9,letterSpacing:3,textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:10 }}>{label}</div>
-      <div style={{ display:"flex",gap:10,overflowX:"auto",paddingBottom:6 }}>
+      <div style={{ display:"flex",justifyContent:"space-between",gap:6 }}>
         {items.map((item,i) => (
           <div key={i} onClick={()=>onPick(item)}
-            style={{ flexShrink:0,cursor:"pointer",transition:"transform 0.18s",textAlign:"center",width:72 }}
+            style={{ flex:1,minWidth:0,cursor:"pointer",transition:"transform 0.18s",textAlign:"center" }}
             onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px) scale(1.04)"}
             onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-            <div style={{ borderRadius:8,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 4px 12px rgba(0,0,0,0.5)",marginBottom:5 }}>
-              <CoverImg cover={item.cover} title={item.title} size={72} />
+            <div style={{ borderRadius:7,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 4px 12px rgba(0,0,0,0.5)",marginBottom:5,aspectRatio:"2/3",position:"relative" }}>
+              <CoverImg covers={item.covers} cover={item.cover} title={item.title} size="fill" />
             </div>
-            <div style={{ color:"#d0d0c0",fontSize:10,fontFamily:"'Crimson Text',serif",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:72 }}>{item.title}</div>
+            <div style={{ color:"#c8c8b8",fontSize:9,fontFamily:"'Crimson Text',serif",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.title.replace(" Vol. 1","")}</div>
           </div>
         ))}
       </div>
     </div>
   );
 }
+
 
 // ── MAIN ──
 export default function Home() {
