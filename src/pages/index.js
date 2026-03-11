@@ -97,79 +97,98 @@ function weeklySlice(arr, count) {
 const TRENDING_BOOKS = weeklySlice(ALL_BOOKS, 7);
 const TRENDING_MANGA = weeklySlice(ALL_MANGA, 7);
 
+// Persistent cover cache so we never fetch the same title twice
+const coverCache = {};
+
 function CoverImgFallback({ emoji, title, fill, size }) {
   const COLORS = {
-    "🌙":"#1a1a3e,#2a2a5e", "⚔️":"#3e1a1a,#5e2a2a", "🏴‍☠️":"#0a1628,#1a2e4a",
-    "👁️":"#1a0a28,#3a1a4e", "🪚":"#281a0a,#4e3a1a", "🌊":"#0a2028,#1a3a4e",
-    "⚡":"#28280a,#4e4e1a", "🍥":"#280a0a,#4e1a1a", "🐉":"#0a280a,#1a4e1a",
-    "💥":"#280a0a,#5e1a1a", "💀":"#141414,#1e1e1e", "📓":"#0a0a28,#1a1a4e",
-    "🪓":"#1e180a,#3e300a", "⚗️":"#0a1e1e,#1a3e3e", "🌸":"#2e0a1a,#4e1a2e",
-    "🌹":"#2e0808,#4e1010", "⚛️":"#0a1e2e,#1a3e4e", "🐉":"#0a2e0a,#1a4e1a",
-    "🏹":"#1e1e0a,#3e3e1a", "🦴":"#2e2e2e,#1a1a1a", "🧙":"#1a0a2e,#2e1a4e",
-    "✨":"#2e2a0a,#4e461a", "🗡️":"#1e1e2e,#2e2e4e", "🥂":"#2e280a,#4e401a",
+    "🌙":"#1a1a3e,#2a2a5e","⚔️":"#3e1a1a,#5e2a2a","🏴‍☠️":"#0a1628,#1a2e4a",
+    "👁️":"#1a0a28,#3a1a4e","🪚":"#281a0a,#4e3a1a","🌊":"#0a2028,#1a3a4e",
+    "⚡":"#28280a,#4e4e1a","🍥":"#280a0a,#4e1a1a","🐉":"#0a280a,#1a4e1a",
+    "💥":"#280a0a,#5e1a1a","💀":"#141414,#1e1e1e","📓":"#0a0a28,#1a1a4e",
+    "🪓":"#1e180a,#3e300a","⚗️":"#0a1e1e,#1a3e3e","🌸":"#2e0a1a,#4e1a2e",
+    "🌹":"#2e0808,#4e1010","⚛️":"#0a1e2e,#1a3e4e","🏹":"#1e1e0a,#3e3e1a",
+    "🦴":"#2e2e2e,#1a1a1a","🧙":"#1a0a2e,#2e1a4e","✨":"#2e2a0a,#4e461a",
+    "🗡️":"#1e1e2e,#2e2e4e","🥂":"#2e280a,#4e401a","⚡":"#282808,#4e4e18",
   };
-  const [c1, c2] = (COLORS[emoji] || "#1a1a2e,#2e2e4e").split(",");
-  const baseStyle = {
-    background: `linear-gradient(145deg,${c1},${c2})`,
-    display: "flex", flexDirection: "column",
-    alignItems: "center", justifyContent: "center", gap: 6,
-  };
-  const style = fill
-    ? { ...baseStyle, position:"absolute", inset:0 }
-    : { ...baseStyle, width:size, height:size*1.4, borderRadius:6 };
+  const [c1,c2] = (COLORS[emoji]||"#1a1a2e,#2e2e4e").split(",");
+  const base = { background:`linear-gradient(145deg,${c1},${c2})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6 };
+  const style = fill ? {...base,position:"absolute",inset:0} : {...base,width:size,height:size*1.4,borderRadius:6};
   return (
     <div style={style}>
-      <span style={{ fontSize: fill ? 28 : Math.max(14, size*0.33) }}>{emoji || "📖"}</span>
-      <span style={{ color:"#9090b8", fontSize: fill ? 9 : 7, fontFamily:"monospace",
-        textAlign:"center", padding:"0 5px", lineHeight:1.3,
-        display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical", overflow:"hidden" }}>
+      <span style={{fontSize:fill?28:Math.max(14,size*0.33)}}>{emoji||"📖"}</span>
+      <span style={{color:"#9090b8",fontSize:fill?9:7,fontFamily:"monospace",textAlign:"center",padding:"0 5px",lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
         {(title||"").replace(" Vol. 1","")}
       </span>
     </div>
   );
 }
 
-function CoverImg({ cover, covers, title, emoji, size = 72 }) {
-  const sources = covers || (cover ? [cover] : []);
-  const [failCount, setFailCount] = useState(0);
+// Fetches the best available cover from Open Library search — works for ANY book/manga
+async function fetchCoverUrl(title, author) {
+  const key = (title+"|"+(author||"")).toLowerCase();
+  if (coverCache[key] !== undefined) return coverCache[key];
+  coverCache[key] = null; // mark as in-flight
+  try {
+    const q = encodeURIComponent(title + (author ? " " + author : ""));
+    const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=cover_i,isbn`);
+    const data = await res.json();
+    // Try cover_i first (most reliable)
+    for (const doc of (data.docs||[])) {
+      if (doc.cover_i) {
+        const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
+        coverCache[key] = url;
+        return url;
+      }
+    }
+    // Try ISBNs
+    for (const doc of (data.docs||[])) {
+      for (const isbn of (doc.isbn||[]).slice(0,3)) {
+        const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
+        coverCache[key] = url;
+        return url;
+      }
+    }
+  } catch {}
+  coverCache[key] = ""; // nothing found
+  return "";
+}
+
+function CoverImg({ cover, covers, title, author, emoji, size = 72 }) {
+  // Static sources from the data definition
+  const staticSources = covers || (cover ? [cover] : []);
+  const [staticFail, setStaticFail] = useState(0);
+  const [dynamicUrl, setDynamicUrl] = useState(null); // fetched at runtime
+  const [dynamicFailed, setDynamicFailed] = useState(false);
   const fill = size === "fill";
 
-  if (!sources.length || failCount >= sources.length) {
+  // When all static sources fail, fetch dynamically
+  useEffect(() => {
+    if (staticFail >= staticSources.length && dynamicUrl === null && !dynamicFailed) {
+      fetchCoverUrl(title, author).then(url => {
+        if (url) setDynamicUrl(url);
+        else setDynamicFailed(true);
+      });
+    }
+  }, [staticFail, staticSources.length, title, author, dynamicUrl, dynamicFailed]);
+
+  const imgStyle = fill
+    ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}
+    : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"};
+
+  // Show dynamic cover if static all failed
+  if (staticFail >= staticSources.length) {
+    if (dynamicUrl) return <img src={dynamicUrl} alt={title} onError={()=>setDynamicFailed(true)} style={imgStyle} />;
     return <CoverImgFallback emoji={emoji} title={title} fill={fill} size={size} />;
   }
 
   return (
     <img
-      src={sources[failCount]}
+      src={staticSources[staticFail]}
       alt={title}
-      onError={() => setFailCount(n => n + 1)}
-      style={fill
-        ? { position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }
-        : { width:size, height:size*1.4, objectFit:"cover", borderRadius:6, display:"block" }}
+      onError={() => setStaticFail(n => n + 1)}
+      style={imgStyle}
     />
-  );
-}
-
-
-function TrendingRow({ label, items, onPick }) {
-  const count = items.length;
-  return (
-    <div style={{ marginTop:10 }}>
-      <div style={{ color:"#888",fontSize:9,letterSpacing:3,textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:10 }}>{label}</div>
-      <div style={{ display:"flex",justifyContent:"space-between",gap:6 }}>
-        {items.map((item,i) => (
-          <div key={i} onClick={()=>onPick(item)}
-            style={{ flex:1,minWidth:0,cursor:"pointer",transition:"transform 0.18s",textAlign:"center" }}
-            onMouseEnter={e=>e.currentTarget.style.transform="translateY(-4px) scale(1.04)"}
-            onMouseLeave={e=>e.currentTarget.style.transform="none"}>
-            <div style={{ borderRadius:7,overflow:"hidden",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 4px 12px rgba(0,0,0,0.5)",marginBottom:5,aspectRatio:"2/3",position:"relative" }}>
-              <CoverImg covers={item.covers} cover={item.cover} title={item.title} emoji={item.emoji} size="fill" />
-            </div>
-            <div style={{ color:"#c8c8b8",fontSize:9,fontFamily:"'Crimson Text',serif",lineHeight:1.2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{item.title.replace(" Vol. 1","")}</div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
