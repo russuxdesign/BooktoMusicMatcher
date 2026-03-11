@@ -230,21 +230,75 @@ function ShareModal({ book, recs, gradient, onClose }) {
   };
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(`https://${siteUrl}`);
+    // We need specificUrl here but it's computed later — copy after recs are ready
+    const firstPl = recs.find(r => r.playlist?.url);
+    const plUrl = firstPl?.playlist?.url || `https://${siteUrl}`;
+    const copyText = firstPl
+      ? `🎵 "${book.title}" soundtrack → ${plUrl}\nMore playlists at https://${siteUrl}`
+      : `https://${siteUrl}`;
+    await navigator.clipboard.writeText(copyText);
     setCopying(true);
     setTimeout(() => setCopying(false), 2000);
   };
 
 
+    // Build share content — use first playlist's Spotify URL as the specific link
+    const firstPlaylist = recs.find(r => r.playlist?.url);
+    const specificUrl = firstPlaylist?.playlist?.url || `https://${siteUrl}`;
     const playlistNames = recs.filter(r=>r.name).slice(0,4).map((r,i)=>`${i+1}. ${r.name}`).join("\n");
-    const shareText = `🎵 Reading "${book.title}" by ${book.author||""}?\nHere are 4 playlists to match:\n${playlistNames}\n\nFind yours → https://${siteUrl}`;
-    const shareUrl = `https://${siteUrl}`;
+    const shareText = `🎵 Reading "${book.title}" by ${book.author||""}? Here are 4 playlists to match:\n${playlistNames}\n\n🔗 First playlist → ${specificUrl}\nFind more at https://${siteUrl}`;
+    const shortShareText = `🎵 "${book.title}" soundtrack → ${specificUrl}`;
+
+    // handleShare — uses Web Share API on mobile (lets user pick Instagram Stories, etc.)
+    // Falls back to platform-specific URL on desktop
+    const handleShare = async (platform) => {
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (platform === "instagram") {
+        if (isMobile && navigator.share) {
+          // Web Share API: on iOS/Android lets user pick Instagram Stories as target
+          // Download image first so user can attach it
+          const html2canvas = (await import("html2canvas")).default;
+          const canvas = await html2canvas(cardRef.current, { scale:2, useCORS:true, backgroundColor:null, logging:false });
+          canvas.toBlob(async (blob) => {
+            const file = new File([blob], "soundtrack.png", { type:"image/png" });
+            if (navigator.canShare && navigator.canShare({ files:[file] })) {
+              await navigator.share({ files:[file], title:`${book.title} Soundtrack`, text:shortShareText });
+            } else {
+              await navigator.share({ title:`${book.title} Soundtrack`, text:shareText, url:specificUrl });
+            }
+          }, "image/png");
+        } else {
+          // Desktop: download card
+          downloadImage();
+        }
+        return;
+      }
+
+      if (platform === "tiktok") {
+        // TikTok has no web share API — download card for manual posting
+        downloadImage();
+        return;
+      }
+
+      if (platform === "messenger") {
+        if (isMobile) {
+          // Try native Messenger deep link first
+          window.location.href = `fb-messenger://share?link=${encodeURIComponent(specificUrl)}`;
+          setTimeout(() => window.open(`https://www.messenger.com/t/?link=${encodeURIComponent(specificUrl)}`, "_blank"), 1500);
+        } else {
+          window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(specificUrl)}&redirect_uri=${encodeURIComponent("https://"+siteUrl)}`, "_blank");
+        }
+        return;
+      }
+    };
+
     const shareTargets = [
       { label:"Instagram",   Icon:ShareIgIcon, color:"#E1306C", action:"instagram" },
       { label:"TikTok",      Icon:ShareTkIcon, color:"#010101", action:"tiktok" },
       { label:"WhatsApp",    Icon:ShareWaIcon, color:"#25D366", url:`https://wa.me/?text=${encodeURIComponent(shareText)}` },
-      { label:"Facebook",    Icon:ShareFbIcon, color:"#1877F2", url:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}` },
-      { label:"Messenger",   Icon:ShareMsIcon, color:"#0084FF", url:`https://www.facebook.com/dialog/send?link=${encodeURIComponent(shareUrl)}&app_id=181477555943165` },
+      { label:"Facebook",    Icon:ShareFbIcon, color:"#1877F2", url:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(specificUrl)}&quote=${encodeURIComponent(shortShareText)}` },
+      { label:"Messenger",   Icon:ShareMsIcon, color:"#0084FF", action:"messenger" },
       { label:"X / Twitter", Icon:ShareXIcon,  color:"#000000", url:`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}` },
     ]
 
@@ -293,15 +347,8 @@ function ShareModal({ book, recs, gradient, onClose }) {
         <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16 }}>
           {shareTargets.map(t => (
             <button key={t.label} onClick={()=>{
-                if (t.action === "instagram") {
-                  const start = Date.now();
-                  window.location.href = "instagram://story-camera";
-                  setTimeout(() => { if (Date.now() - start < 2000) downloadImage(); }, 1200);
-                } else if (t.action === "tiktok") {
-                  downloadImage();
-                } else if (t.url) {
-                  window.open(t.url, "_blank");
-                }
+                if (t.action) handleShare(t.action);
+                else if (t.url) window.open(t.url, "_blank");
               }}
               style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:"10px 6px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,cursor:"pointer",transition:"all 0.18s" }}
               onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.09)";e.currentTarget.style.borderColor=t.color+"88";}}
