@@ -78,7 +78,7 @@ const ALL_MANGA = [
   { title:"Vinland Saga Vol. 1",         author:"Makoto Yukimura",     genre:"Manga",      emoji:"🪓",
     covers:["https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg","https://covers.openlibrary.org/b/id/8228023-L.jpg"] },
   { title:"Bleach Vol. 1",               author:"Tite Kubo",           genre:"Manga",      emoji:"🌙",
-    covers:["https://covers.openlibrary.org/b/isbn/9781591161899-L.jpg","https://covers.openlibrary.org/b/id/7892742-L.jpg"] },
+    covers:["https://covers.openlibrary.org/b/isbn/9781591161899-L.jpg","https://covers.openlibrary.org/b/isbn/9781421504513-L.jpg","https://covers.openlibrary.org/b/isbn/9781591169116-L.jpg","https://covers.openlibrary.org/b/id/8231856-L.jpg"] },
 ];
 
 // Seeded shuffle — same result for the whole week, changes every Monday
@@ -97,61 +97,35 @@ function weeklySlice(arr, count) {
 const TRENDING_BOOKS = weeklySlice(ALL_BOOKS, 7);
 const TRENDING_MANGA = weeklySlice(ALL_MANGA, 7);
 
-// Generate a canvas-based placeholder so thumbnails are NEVER blank
-function makePlaceholder(title, emoji) {
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 120; canvas.height = 180;
-    const ctx = canvas.getContext("2d");
-    // Background gradient
-    const grad = ctx.createLinearGradient(0,0,120,180);
-    grad.addColorStop(0,"#1a1a2e"); grad.addColorStop(1,"#16213e");
-    ctx.fillStyle = grad; ctx.fillRect(0,0,120,180);
-    // Border
-    ctx.strokeStyle = "rgba(232,168,56,0.4)"; ctx.lineWidth = 2;
-    ctx.strokeRect(2,2,116,176);
-    // Emoji
-    ctx.font = "36px serif"; ctx.textAlign = "center";
-    ctx.fillText(emoji || "📖", 60, 80);
-    // Title words
-    ctx.fillStyle = "#c8c8b8"; ctx.font = "bold 11px sans-serif";
-    const words = (title || "").replace(" Vol. 1","").split(" ");
-    const lines = [];
-    let cur = "";
-    words.forEach(w => { if ((cur+" "+w).trim().length > 12) { lines.push(cur.trim()); cur = w; } else cur = (cur+" "+w).trim(); });
-    if (cur) lines.push(cur.trim());
-    lines.slice(0,3).forEach((l,i) => ctx.fillText(l, 60, 110 + i*16));
-    return canvas.toDataURL();
-  } catch { return null; }
-}
-
 function CoverImg({ cover, covers, title, emoji, size = 72 }) {
   const sources = covers || (cover ? [cover] : []);
   const [idx, setIdx] = useState(0);
-  const [placeholder, setPlaceholder] = useState(null);
   const fill = size === "fill";
 
-  // When all URLs fail, generate canvas placeholder
-  useEffect(() => {
-    if (idx >= sources.length && sources.length > 0) {
-      setPlaceholder(makePlaceholder(title, emoji));
-    }
-  }, [idx, sources.length, title, emoji]);
+  // Pure JSX fallback — always visible, never blank
+  const Fallback = () => {
+    const colors = {
+      "🌙":"#1a1a3e,#2a2a5e","⚔️":"#3e1a1a,#5e2a2a","🏴‍☠️":"#0a1628,#1a2e4a",
+      "👁️":"#1a0a28,#3a1a4e","🪚":"#281a0a,#4e3a1a","🌊":"#0a2028,#1a3a4e",
+      "⚡":"#28280a,#4e4e1a","🍥":"#280a0a,#4e1a1a","🐉":"#0a280a,#1a4e1a",
+      "💥":"#280a0a,#5e1a1a","💀":"#0a0a0a,#1e1e1e","📓":"#0a0a28,#1a1a4e",
+      "🪓":"#1e180a,#3e300a","⚗️":"#0a1e1e,#1a3e3e",
+    };
+    const [c1,c2] = (colors[emoji]||"#1a1a2e,#2e2e4e").split(",");
+    const style = fill
+      ? { position:"absolute",inset:0,background:`linear-gradient(145deg,${c1},${c2})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6 }
+      : { width:size,height:size*1.4,background:`linear-gradient(145deg,${c1},${c2})`,borderRadius:6,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6 };
+    return (
+      <div style={style}>
+        <span style={{fontSize: fill ? 28 : Math.max(16, size*0.35)}}>{emoji||"📖"}</span>
+        <span style={{color:"#a0a0c0",fontSize: fill ? 9 : 7,fontFamily:"monospace",textAlign:"center",padding:"0 6px",lineHeight:1.3,maxWidth:"100%",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical"}}>
+          {(title||"").replace(" Vol. 1","")}
+        </span>
+      </div>
+    );
+  };
 
-  const allFailed = idx >= sources.length;
-
-  const containerStyle = fill
-    ? { position:"absolute",inset:0,width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"#12121e" }
-    : { width:size,height:size*1.4,display:"flex",alignItems:"center",justifyContent:"center",background:"#12121e",borderRadius:6 };
-
-  if (allFailed) {
-    return placeholder
-      ? <img src={placeholder} alt={title} style={ fill ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"} : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"}} />
-      : <div style={{...containerStyle,flexDirection:"column",gap:4}}>
-          <span style={{fontSize:20}}>{emoji||"📖"}</span>
-          <span style={{color:"#666",fontSize:8,fontFamily:"monospace",textAlign:"center",padding:"0 4px",lineHeight:1.2}}>{title?.split(" ").slice(0,2).join(" ")}</span>
-        </div>;
-  }
+  if (!sources.length || idx >= sources.length) return <Fallback />;
 
   return (
     <img
@@ -166,248 +140,6 @@ function CoverImg({ cover, covers, title, emoji, size = 72 }) {
 }
 
 
-// ── SHARE CARD MODAL ──
-function ShareModal({ book, recs, gradient, onClose }) {
-  const cardRef = useRef(null);
-  const [copying, setCopying] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
-  const siteUrl = "booktomusicmatcher.vercel.app";
-
-  const moodTags = [...new Set(recs.map(r => r.mood).filter(Boolean))].slice(0, 4);
-
-  const gc1 = gradient?.color1 || "#e8a838";
-  const gc2 = gradient?.color2 || "#7b3fbe";
-  const gc3 = gradient?.color3 || "#1a1a2e";
-
-  const downloadImage = async () => {
-    const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(cardRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: null,
-      logging: false,
-    });
-    const link = document.createElement("a");
-    link.download = `${book.title.replace(/\s+/g,"-")}-soundtrack.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    setDownloaded(true);
-    setTimeout(() => setDownloaded(false), 2000);
-  };
-
-  const copyLink = async () => {
-    await navigator.clipboard.writeText(`https://${siteUrl}`);
-    setCopying(true);
-    setTimeout(() => setCopying(false), 2000);
-  };
-
-  // SVG brand icons for each platform
-  const IgIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1" fill="#E1306C"/></svg>;
-  const TkIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.73a8.14 8.14 0 004.77 1.52V6.79a4.85 4.85 0 01-1-.1z"/></svg>;
-  const WaIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>;
-  const FbIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>;
-  const MsIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="url(#mg)"><defs><linearGradient id="mg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#00B2FF"/><stop offset="100%" stopColor="#006AFF"/></linearGradient></defs><path d="M12 0C5.373 0 0 4.975 0 11.111c0 3.497 1.745 6.616 4.472 8.652V24l4.086-2.242c1.09.301 2.246.464 3.442.464 6.627 0 12-4.975 12-11.111S18.627 0 12 0zm1.193 14.963l-3.056-3.259-5.963 3.259L10.733 8l3.13 3.259L19.752 8l-6.559 6.963z"/></svg>;
-  const XIcon  = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>;
-
-  const shareTargets = [
-    { label:"Instagram",   Icon:IgIcon, color:"#E1306C", url: null },
-    { label:"TikTok",      Icon:TkIcon, color:"#010101", url: null },
-    { label:"WhatsApp",    Icon:WaIcon, color:"#25D366", url:`https://wa.me/?text=${encodeURIComponent(`🎵 My reading soundtrack for "${book.title}" — find yours at https://${siteUrl}`)}` },
-    { label:"Facebook",    Icon:FbIcon, color:"#1877F2", url:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://${siteUrl}`)}` },
-    { label:"Messenger",   Icon:MsIcon, color:"#0084FF", url:`https://www.facebook.com/dialog/send?link=${encodeURIComponent(`https://${siteUrl}`)}&app_id=181477555943165` },
-    { label:"X / Twitter", Icon:XIcon,  color:"#000000", url:`https://twitter.com/intent/tweet?text=${encodeURIComponent(`🎵 My reading soundtrack for "${book.title}" — find yours at https://${siteUrl}`)}` },
-  ];
-
-  return (
-    <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto",borderRadius:16,background:"#0d0d1e",border:"1px solid rgba(255,255,255,0.12)",padding:24 }}>
-
-        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-          <div style={{ color:"#f0f0e0",fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700 }}>Share your soundtrack</div>
-          <button onClick={onClose} style={{ background:"transparent",border:"none",color:"#888",fontSize:22,cursor:"pointer",lineHeight:1 }}>×</button>
-        </div>
-
-        {/* The shareable card */}
-        <div ref={cardRef} style={{
-          borderRadius:14,
-          overflow:"hidden",
-          background:gc3,
-          padding:28,
-          position:"relative",
-          marginBottom:20,
-          border:"1px solid rgba(255,255,255,0.1)",
-          minHeight:280,
-        }}>
-          {/* Full-bleed book cover — sharp, recognizable */}
-          {book.cover && (
-            <div style={{ position:"absolute",inset:0,backgroundImage:`url(${book.cover})`,backgroundSize:"cover",backgroundPosition:"center top",opacity:0.55,pointerEvents:"none" }} />
-          )}
-          {/* Dark gradient from bottom — keeps text readable */}
-          <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.82) 75%, rgba(0,0,0,0.95) 100%)",pointerEvents:"none" }} />
-          {/* Subtle color tint from gradient */}
-          <div style={{ position:"absolute",inset:0,background:`linear-gradient(135deg, ${gc1}22 0%, transparent 50%, ${gc2}22 100%)`,pointerEvents:"none" }} />
-
-          <div style={{ position:"relative",zIndex:1 }}>
-            {/* Book emoji + title */}
-            <div style={{ fontSize:40,marginBottom:10,textAlign:"center" }}>{book.emoji || "📖"}</div>
-            <div style={{ fontFamily:"'Georgia',serif",fontSize:22,fontWeight:700,color:"#fff",textAlign:"center",marginBottom:4,textShadow:"0 2px 8px rgba(0,0,0,0.5)",lineHeight:1.2 }}>{book.title}</div>
-            <div style={{ color:"rgba(255,255,255,0.6)",fontSize:13,textAlign:"center",marginBottom:18,fontStyle:"italic" }}>by {book.author}</div>
-
-            {/* Mood tags */}
-            <div style={{ display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",marginBottom:20 }}>
-              {moodTags.map(m => {
-                const ms = MOOD[m.toLowerCase()] || MOOD.default;
-                return (
-                  <span key={m} style={{ background:"rgba(0,0,0,0.4)",border:`1px solid ${ms.border}`,color:ms.text,fontSize:10,fontFamily:"monospace",padding:"3px 10px",borderRadius:20,letterSpacing:1,textTransform:"uppercase" }}>{m}</span>
-                );
-              })}
-            </div>
-
-            {/* Divider */}
-            <div style={{ height:1,background:"rgba(255,255,255,0.15)",marginBottom:16 }} />
-
-            {/* Playlist names */}
-            <div style={{ display:"flex",flexDirection:"column",gap:6,marginBottom:20 }}>
-              {recs.filter(r=>r.name).slice(0,4).map((r,i) => (
-                <div key={i} style={{ display:"flex",alignItems:"center",gap:8 }}>
-                  <span style={{ color:"rgba(255,255,255,0.4)",fontSize:11,fontFamily:"monospace",width:16,textAlign:"right" }}>{i+1}</span>
-                  <span style={{ color:"rgba(255,255,255,0.85)",fontSize:13,fontFamily:"'Georgia',serif" }}>{r.name}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:12,borderTop:"1px solid rgba(255,255,255,0.1)" }}>
-              <div style={{ color:"rgba(255,255,255,0.45)",fontSize:10,fontFamily:"monospace",letterSpacing:1 }}>MADE WITH</div>
-              <div style={{ color:"rgba(255,255,255,0.7)",fontSize:11,fontFamily:"monospace",fontWeight:700,letterSpacing:1 }}>📖 BOOK TO MUSIC MATCHER</div>
-              <div style={{ color:"rgba(255,255,255,0.35)",fontSize:9,fontFamily:"monospace" }}>{siteUrl}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Download image button */}
-        <button onClick={downloadImage}
-          style={{ width:"100%",padding:"12px 0",background:"linear-gradient(135deg,#e8a838,#cc9030)",border:"none",borderRadius:10,cursor:"pointer",color:"#000",fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:16,transition:"opacity 0.2s" }}>
-          {downloaded ? "✓ Downloaded!" : "⬇ Download Image"}
-        </button>
-
-        {/* Share targets */}
-        <div style={{ color:"#888",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontFamily:"monospace",marginBottom:10 }}>Share to</div>
-        <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16 }}>
-          {shareTargets.map(t => (
-            <button key={t.label}
-              onClick={() => {
-                if (t.url) window.open(t.url, "_blank");
-                else downloadImage(); // Instagram/TikTok: download image to share manually
-              }}
-              style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:"10px 6px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,cursor:"pointer",transition:"all 0.18s" }}
-              onMouseEnter={e => { e.currentTarget.style.background="rgba(255,255,255,0.09)"; e.currentTarget.style.borderColor=t.color+"88"; }}
-              onMouseLeave={e => { e.currentTarget.style.background="rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.08)"; }}>
-              <div style={{ width:22, height:22, display:"flex", alignItems:"center", justifyContent:"center" }}><t.Icon /></div>
-              <span style={{ color:"#bbb",fontSize:9,fontFamily:"monospace",letterSpacing:0.5 }}>{t.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Copy link */}
-        <button onClick={copyLink}
-          style={{ width:"100%",padding:"10px 0",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,cursor:"pointer",color:copying?"#6ee896":"#bbb",fontFamily:"monospace",fontSize:12,transition:"all 0.2s" }}>
-          {copying ? "✓ Copied!" : "🔗 Copy link"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── PLAYLIST CARD ──
-function PlaylistCard({ rec, index, onShare, book, recs, gradient }) {
-  const [hov, setHov] = useState(false);
-  const [showEmbed, setShowEmbed] = useState(false);
-  const ms = MOOD[rec.mood?.toLowerCase()] || MOOD.default;
-  const playlistId = rec.playlist?.id;
-  const myClose = useRef(null);
-
-  useEffect(() => { myClose.current = () => setShowEmbed(false); });
-
-  const handlePreview = (e) => {
-    e.stopPropagation();
-    if (showEmbed) {
-      setShowEmbed(false); gCloseEmbed = null;
-    } else {
-      if (gCloseEmbed) gCloseEmbed();
-      setShowEmbed(true);
-      gCloseEmbed = () => myClose.current?.();
-    }
-  };
-
-  const embedSrc = playlistId
-    ? `https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0&autoplay=1`
-    : null;
-
-  return (
-    <div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
-      style={{ borderRadius:13,border:`1px solid ${hov?ms.border:"rgba(255,255,255,0.12)"}`,background:hov?ms.bg:"rgba(0,0,0,0.35)",boxShadow:hov?"0 10px 36px rgba(0,0,0,0.5)":"0 2px 10px rgba(0,0,0,0.3)",transform:hov?"translateY(-2px)":"none",transition:"all 0.25s ease",animation:`fadeUp 0.4s ease ${index*0.08}s both`,backdropFilter:"blur(10px)",overflow:"hidden" }}>
-
-      <div style={{ display:"flex" }}>
-        <div style={{ width:96,height:96,flexShrink:0,background:ms.bg,overflow:"hidden" }}>
-          {rec.loading
-            ? <div style={{ width:96,height:96,display:"flex",alignItems:"center",justifyContent:"center" }}><div style={{ width:20,height:20,border:`2px solid ${ms.text}44`,borderTopColor:ms.text,borderRadius:"50%",animation:"spin 0.7s linear infinite" }} /></div>
-            : rec.thumbnail
-            ? <img src={rec.thumbnail} alt={rec.name} style={{ width:96,height:96,objectFit:"cover",display:"block" }} />
-            : <div style={{ width:96,height:96,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28 }}>🎵</div>}
-        </div>
-
-        <div style={{ flex:1,minWidth:0,padding:"11px 13px",display:"flex",flexDirection:"column",justifyContent:"space-between" }}>
-          <div>
-            <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:4,flexWrap:"wrap" }}>
-              <span style={{ fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,color:hov?ms.text:"#f0f0e8",transition:"color 0.2s" }}>{rec.name}</span>
-              <span style={{ background:ms.bg,border:`1px solid ${ms.border}`,color:ms.text,fontSize:9,fontFamily:"'DM Mono',monospace",padding:"2px 7px",borderRadius:20,letterSpacing:"1.5px",textTransform:"uppercase",flexShrink:0 }}>{rec.mood}</span>
-            </div>
-            <div style={{ color:"#b0b0a8",fontSize:13,fontFamily:"'Crimson Text',serif",fontStyle:"italic",lineHeight:1.4 }}>{rec.description}</div>
-          </div>
-
-          <div style={{ display:"flex",alignItems:"center",gap:8,marginTop:8,flexWrap:"wrap" }}>
-            {playlistId && !rec.loading && (
-              <button onClick={handlePreview}
-                style={{ display:"flex",alignItems:"center",gap:5,background:showEmbed?"#1db954":ms.bg,border:`1px solid ${showEmbed?"#1db954":ms.border}`,borderRadius:20,padding:"6px 13px",cursor:"pointer",transition:"all 0.22s",flexShrink:0 }}>
-                <span style={{ fontSize:10 }}>{showEmbed?"⏹":"▶"}</span>
-                <span style={{ color:showEmbed?"#000":ms.text,fontSize:10,fontWeight:700,fontFamily:"'DM Mono',monospace" }}>{showEmbed?"Close":"Preview"}</span>
-              </button>
-            )}
-            {rec.playlist?.url && (
-              <a href={rec.playlist.url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}
-                style={{ display:"flex",alignItems:"center",gap:5,background:hov?"#1db954":"rgba(29,185,84,0.1)",border:"1px solid rgba(29,185,84,0.4)",borderRadius:20,padding:"6px 11px",textDecoration:"none",transition:"all 0.22s",flexShrink:0 }}>
-                <svg width={10} height={10} viewBox="0 0 24 24" fill={hov?"#000":"#1db954"}><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-                <span style={{ color:hov?"#000":"#1db954",fontSize:10,fontWeight:700,fontFamily:"'DM Mono',monospace" }}>Open</span>
-              </a>
-            )}
-            {/* Share button — white SVG share icon */}
-            <button onClick={e=>{e.stopPropagation();onShare();}}
-              style={{ display:"flex",alignItems:"center",gap:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:20,padding:"6px 11px",cursor:"pointer",transition:"all 0.22s",flexShrink:0,marginLeft:"auto" }}
-              onMouseEnter={e=>{e.currentTarget.style.background="rgba(255,255,255,0.12)";e.currentTarget.style.borderColor="rgba(255,255,255,0.4)";}}
-              onMouseLeave={e=>{e.currentTarget.style.background="rgba(255,255,255,0.04)";e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";}}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-              </svg>
-              <span style={{ color:"#ffffff",fontSize:10,fontWeight:700,fontFamily:"'DM Mono',monospace" }}>Share</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {showEmbed && embedSrc && (
-        <div style={{ borderTop:`1px solid ${ms.border}` }}>
-          <iframe key={embedSrc} src={embedSrc} width="100%" height="152" frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="eager" style={{ display:"block" }} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── TRENDING ROW ──
 function TrendingRow({ label, items, onPick }) {
   const count = items.length;
   return (
