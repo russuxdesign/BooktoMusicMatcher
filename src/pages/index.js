@@ -130,20 +130,21 @@ function ShareModal({ book, recs, gradient, onClose }) {
         <div ref={cardRef} style={{
           borderRadius:14,
           overflow:"hidden",
-          background:`linear-gradient(135deg, ${gc3} 0%, ${gc2}88 50%, ${gc1}55 100%)`,
+          background:gc3,
           padding:28,
           position:"relative",
           marginBottom:20,
           border:"1px solid rgba(255,255,255,0.1)",
+          minHeight:280,
         }}>
-          {/* Faded book cover background */}
+          {/* Full-bleed book cover — sharp, recognizable */}
           {book.cover && (
-            <div style={{ position:"absolute",inset:0,backgroundImage:`url(${book.cover})`,backgroundSize:"cover",backgroundPosition:"center",opacity:0.13,filter:"blur(3px) saturate(1.4)",pointerEvents:"none" }} />
+            <div style={{ position:"absolute",inset:0,backgroundImage:`url(${book.cover})`,backgroundSize:"cover",backgroundPosition:"center top",opacity:0.55,pointerEvents:"none" }} />
           )}
-          {/* Gradient overlay on top of cover */}
-          <div style={{ position:"absolute",inset:0,background:`linear-gradient(135deg, ${gc3}ee 0%, ${gc2}bb 50%, ${gc1}88 100%)`,pointerEvents:"none" }} />
-          {/* Radial texture */}
-          <div style={{ position:"absolute",inset:0,background:`radial-gradient(ellipse at 10% 10%, ${gc1}44 0%, transparent 60%), radial-gradient(ellipse at 90% 90%, ${gc2}44 0%, transparent 60%)`,pointerEvents:"none" }} />
+          {/* Dark gradient from bottom — keeps text readable */}
+          <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.82) 75%, rgba(0,0,0,0.95) 100%)",pointerEvents:"none" }} />
+          {/* Subtle color tint from gradient */}
+          <div style={{ position:"absolute",inset:0,background:`linear-gradient(135deg, ${gc1}22 0%, transparent 50%, ${gc2}22 100%)`,pointerEvents:"none" }} />
 
           <div style={{ position:"relative",zIndex:1 }}>
             {/* Book emoji + title */}
