@@ -109,7 +109,7 @@ export default function Home() {
                 >
                   {item.coverUrl ? (
                     <img
-                      src={item.coverUrl}
+                      src={`/api/covers?url=${encodeURIComponent(item.coverUrl)}`}
                       alt={item.title}
                       className="w-10 h-14 object-cover rounded shadow-sm"
                     />
@@ -169,7 +169,7 @@ export default function Home() {
               >
                 <div className="w-full h-56 bg-gray-800 rounded-lg overflow-hidden mb-3 relative flex items-center justify-center">
                   <img
-                    src={manga.coverUrl}
+                    src={`/api/covers?url=${encodeURIComponent(manga.coverUrl)}`}
                     alt={manga.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
