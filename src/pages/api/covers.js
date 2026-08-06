@@ -1,32 +1,25 @@
+// Server-side cover lookup — no CORS issues, runs on Vercel
 export default async function handler(req, res) {
-  const { url } = req.query;
-
-  if (!url) {
-    return res.status(400).json({ error: 'No URL provided' });
-  }
+  res.setHeader("Cache-Control", "public, max-age=86400"); // cache 24h
+  const { title, author } = req.query;
+  if (!title) return res.status(400).json({ error: "title required" });
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
+    const q = encodeURIComponent(title + (author ? " " + author : ""));
+    const r = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=cover_i,isbn,title`);
+    const data = await r.json();
+    for (const doc of (data.docs || [])) {
+      if (doc.cover_i) {
+        return res.status(200).json({ url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` });
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Cache-Control', 'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400');
-
-    return res.send(buffer);
-  } catch (error) {
-    console.error('Proxy error:', error);
-    return res.status(500).json({ error: 'Failed to load proxy image' });
+    for (const doc of (data.docs || [])) {
+      for (const isbn of (doc.isbn || []).slice(0, 3)) {
+        return res.status(200).json({ url: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg` });
+      }
+    }
+    return res.status(404).json({ error: "not found" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }
