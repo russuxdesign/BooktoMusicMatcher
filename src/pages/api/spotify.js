@@ -23,7 +23,13 @@ export default async function handler(req, res) {
     const title = (book?.title || '').toLowerCase();
 
     // 1. Return Manga tracks
-    if (subjects.includes('manga') || title.includes('jujutsu') || title.includes('vinland') || title.includes('titan') || title.includes('berserk')) {
+    if (
+      subjects.includes('manga') ||
+      title.includes('jujutsu') ||
+      title.includes('vinland') ||
+      title.includes('titan') ||
+      title.includes('berserk')
+    ) {
       return res.status(200).json({ tracks: FALLBACK_TRACKS.manga });
     }
 
@@ -32,7 +38,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ tracks: FALLBACK_TRACKS.fantasy });
     }
 
-    // 3. Guaranteed fallback output (never returns blank)
+    // 3. Fallback: Always return music!
     return res.status(200).json({ tracks: FALLBACK_TRACKS.default });
   } catch (error) {
     return res.status(200).json({ tracks: FALLBACK_TRACKS.default });
