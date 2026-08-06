@@ -78,40 +78,38 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white font-sans flex flex-col items-center justify-between p-6 md:p-12">
-      <div className="w-full max-w-3xl flex flex-col items-center">
+    <div className="page-container">
+      <div className="content-wrapper">
         {/* Header */}
-        <header className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-indigo-400 mb-2">
-            Book to Music Matcher
-          </h1>
-          <p className="text-gray-400 text-base md:text-lg">
+        <header className="header">
+          <h1 className="title">Book to Music Matcher</h1>
+          <p className="subtitle">
             Find the perfect soundtrack for whatever you're reading.
           </p>
         </header>
 
         {/* Search Section */}
-        <div className="relative w-full mb-8">
+        <div className="search-container">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search any real book or manga title..."
-            className="w-full px-5 py-4 bg-gray-900 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-lg"
+            className="search-input"
           />
           {suggestions.length > 0 && (
-            <ul className="absolute z-50 w-full mt-2 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto">
+            <ul className="suggestions-list">
               {suggestions.map((item, idx) => (
                 <li
                   key={idx}
                   onClick={() => handleSelectBook(item)}
-                  className="p-3.5 hover:bg-gray-800 cursor-pointer border-b border-gray-800/50 flex items-center gap-4 transition"
+                  className="suggestion-item"
                 >
                   {item.coverUrl ? (
                     <img
                       src={`/api/covers?url=${encodeURIComponent(item.coverUrl)}`}
                       alt={item.title}
-                      className="w-10 h-14 object-cover rounded shadow-sm bg-gray-800"
+                      className="suggestion-cover"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         if (e.target.nextSibling) {
@@ -120,12 +118,12 @@ export default function Home() {
                       }}
                     />
                   ) : null}
-                  <div className="w-10 h-14 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-400 text-center p-1 shrink-0" style={{ display: item.coverUrl ? 'none' : 'flex' }}>
+                  <div className="suggestion-no-cover" style={{ display: item.coverUrl ? 'none' : 'flex' }}>
                     No Cover
                   </div>
                   <div>
-                    <p className="font-semibold text-sm text-gray-100">{item.title}</p>
-                    <p className="text-xs text-gray-400">{item.author}</p>
+                    <p className="suggestion-title">{item.title}</p>
+                    <p className="suggestion-author">{item.author}</p>
                   </div>
                 </li>
               ))}
@@ -135,25 +133,25 @@ export default function Home() {
 
         {/* Selected Book & Playlist Display */}
         {loading ? (
-          <div className="my-12 text-center">
-            <p className="text-indigo-400 font-medium animate-pulse">Matching soundtrack to book...</p>
+          <div className="loading-container">
+            <p className="loading-text">Matching soundtrack to book...</p>
           </div>
         ) : selectedBook && (
-          <div className="w-full bg-gray-900 p-6 md:p-8 rounded-2xl border border-gray-800 shadow-xl mb-12">
-            <div className="border-b border-gray-800 pb-4 mb-6">
-              <h2 className="text-2xl font-bold text-indigo-300">{selectedBook.title}</h2>
-              <p className="text-gray-400 text-sm">by {selectedBook.author}</p>
+          <div className="selected-book-card">
+            <div className="selected-book-header">
+              <h2 className="selected-book-title">{selectedBook.title}</h2>
+              <p className="selected-book-author">by {selectedBook.author}</p>
             </div>
             
-            <h3 className="text-lg font-semibold mb-4 text-gray-200">Suggested Soundtrack</h3>
-            <div className="space-y-3">
+            <h3 className="soundtrack-heading">Suggested Soundtrack</h3>
+            <div className="tracks-list">
               {playlist.map((track, i) => (
-                <div key={i} className="flex justify-between items-center bg-gray-800/60 p-4 rounded-xl border border-gray-800 hover:border-gray-700 transition">
+                <div key={i} className="track-item">
                   <div>
-                    <p className="font-semibold text-sm text-white">{track.title}</p>
-                    <p className="text-xs text-gray-400">{track.artist}</p>
+                    <p className="track-title">{track.title}</p>
+                    <p className="track-artist">{track.artist}</p>
                   </div>
-                  <span className="text-xs bg-indigo-950 text-indigo-300 px-3 py-1 rounded-full border border-indigo-800/60 font-medium">
+                  <span className="track-genre">
                     {track.genre || 'Ambient'}
                   </span>
                 </div>
@@ -163,20 +161,20 @@ export default function Home() {
         )}
 
         {/* Popular Manga Grid */}
-        <section className="w-full mt-4">
-          <h3 className="text-xl font-bold mb-4 text-gray-200">Popular Manga</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <section className="manga-section">
+          <h3 className="section-heading">Popular Manga</h3>
+          <div className="manga-grid">
             {MANGA_RECOMMENDATIONS.map((manga, idx) => (
               <div
                 key={idx}
                 onClick={() => handleSelectBook(manga)}
-                className="bg-gray-900 p-3 rounded-xl border border-gray-800 hover:border-indigo-500 cursor-pointer transition flex flex-col group"
+                className="manga-card"
               >
-                <div className="w-full h-56 bg-gray-800 rounded-lg overflow-hidden mb-3 relative flex items-center justify-center">
+                <div className="manga-cover-container">
                   <img
                     src={`/api/covers?url=${encodeURIComponent(manga.coverUrl)}`}
                     alt={manga.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    className="manga-cover-img"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       if (e.target.nextSibling) {
@@ -184,12 +182,12 @@ export default function Home() {
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-gray-800 items-center justify-center text-xs text-gray-400 text-center p-2" style={{ display: 'none' }}>
+                  <div className="manga-cover-fallback" style={{ display: 'none' }}>
                     {manga.title}
                   </div>
                 </div>
-                <p className="font-semibold text-sm truncate text-white">{manga.title}</p>
-                <p className="text-xs text-gray-400">{manga.author}</p>
+                <p className="manga-title">{manga.title}</p>
+                <p className="manga-author">{manga.author}</p>
               </div>
             ))}
           </div>
