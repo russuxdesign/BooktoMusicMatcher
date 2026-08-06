@@ -78,121 +78,106 @@ export default function Home() {
   };
 
   return (
-    <div className="page-container">
-      <div className="content-wrapper">
-        {/* Header */}
-        <header className="header">
-          <h1 className="title">Book to Music Matcher</h1>
-          <p className="subtitle">
-            Find the perfect soundtrack for whatever you're reading.
-          </p>
-        </header>
+    <main className="min-h-screen bg-gray-950 text-white p-6 max-w-4xl mx-auto flex flex-col items-center font-sans">
+      <h1 className="text-4xl font-extrabold mb-2 text-indigo-400">Book to Music Matcher</h1>
+      <p className="text-gray-400 mb-8">Find the perfect soundtrack for whatever you're reading.</p>
 
-        {/* Search Section */}
-        <div className="search-container">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search any real book or manga title..."
-            className="search-input"
-          />
-          {suggestions.length > 0 && (
-            <ul className="suggestions-list">
-              {suggestions.map((item, idx) => (
-                <li
-                  key={idx}
-                  onClick={() => handleSelectBook(item)}
-                  className="suggestion-item"
-                >
-                  {item.coverUrl ? (
-                    <img
-                      src={`/api/covers?url=${encodeURIComponent(item.coverUrl)}`}
-                      alt={item.title}
-                      className="suggestion-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'flex';
-                        }
-                      }}
-                    />
-                  ) : null}
-                  <div className="suggestion-no-cover" style={{ display: item.coverUrl ? 'none' : 'flex' }}>
-                    No Cover
-                  </div>
-                  <div>
-                    <p className="suggestion-title">{item.title}</p>
-                    <p className="suggestion-author">{item.author}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Selected Book & Playlist Display */}
-        {loading ? (
-          <div className="loading-container">
-            <p className="loading-text">Matching soundtrack to book...</p>
-          </div>
-        ) : selectedBook && (
-          <div className="selected-book-card">
-            <div className="selected-book-header">
-              <h2 className="selected-book-title">{selectedBook.title}</h2>
-              <p className="selected-book-author">by {selectedBook.author}</p>
-            </div>
-            
-            <h3 className="soundtrack-heading">Suggested Soundtrack</h3>
-            <div className="tracks-list">
-              {playlist.map((track, i) => (
-                <div key={i} className="track-item">
-                  <div>
-                    <p className="track-title">{track.title}</p>
-                    <p className="track-artist">{track.artist}</p>
-                  </div>
-                  <span className="track-genre">
-                    {track.genre || 'Ambient'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Popular Manga Grid */}
-        <section className="manga-section">
-          <h3 className="section-heading">Popular Manga</h3>
-          <div className="manga-grid">
-            {MANGA_RECOMMENDATIONS.map((manga, idx) => (
-              <div
+      {/* Autocomplete Input */}
+      <div className="relative w-full max-w-xl mb-8">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search any real book or manga title..."
+          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-indigo-500"
+        />
+        {suggestions.length > 0 && (
+          <ul className="absolute z-50 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden max-h-80 overflow-y-auto">
+            {suggestions.map((item, idx) => (
+              <li
                 key={idx}
-                onClick={() => handleSelectBook(manga)}
-                className="manga-card"
+                onClick={() => handleSelectBook(item)}
+                className="p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-800 flex items-center gap-3"
               >
-                <div className="manga-cover-container">
+                {item.coverUrl ? (
                   <img
-                    src={`/api/covers?url=${encodeURIComponent(manga.coverUrl)}`}
-                    alt={manga.title}
-                    className="manga-cover-img"
+                    src={`/api/covers?url=${encodeURIComponent(item.coverUrl)}`}
+                    alt={item.title}
+                    className="w-8 h-12 object-cover rounded"
                     onError={(e) => {
                       e.target.style.display = 'none';
-                      if (e.target.nextSibling) {
-                        e.target.nextSibling.style.display = 'flex';
-                      }
+                      if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                     }}
                   />
-                  <div className="manga-cover-fallback" style={{ display: 'none' }}>
-                    {manga.title}
-                  </div>
+                ) : null}
+                <div className="w-8 h-12 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-500 text-center p-0.5 shrink-0" style={{ display: item.coverUrl ? 'none' : 'flex' }}>
+                  No Cover
                 </div>
-                <p className="manga-title">{manga.title}</p>
-                <p className="manga-author">{manga.author}</p>
+                <div>
+                  <p className="font-semibold text-sm">{item.title}</p>
+                  <p className="text-xs text-gray-400">{item.author}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Selected Book & Music Display */}
+      {loading ? (
+        <p className="text-indigo-400 my-8">Finding music matches...</p>
+      ) : selectedBook && (
+        <div className="w-full bg-gray-900 p-6 rounded-xl border border-gray-800 mb-10">
+          <h2 className="text-2xl font-bold text-indigo-300">{selectedBook.title}</h2>
+          <p className="text-gray-400 text-sm mb-4">by {selectedBook.author}</p>
+          
+          <h3 className="text-lg font-semibold mb-3">Suggested Soundtrack</h3>
+          <div className="space-y-2">
+            {playlist.map((track, i) => (
+              <div key={i} className="flex justify-between items-center bg-gray-800 p-3 rounded">
+                <div>
+                  <p className="font-medium text-sm text-white">{track.title}</p>
+                  <p className="text-xs text-gray-400">{track.artist}</p>
+                </div>
+                <span className="text-xs bg-indigo-950 text-indigo-300 px-2.5 py-1 rounded border border-indigo-800">
+                  {track.genre || 'Ambient'}
+                </span>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      )}
+
+      {/* Manga Section */}
+      <div className="w-full mt-auto">
+        <h3 className="text-xl font-bold mb-4 text-gray-200">Popular Manga</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {MANGA_RECOMMENDATIONS.map((manga, idx) => (
+            <div
+              key={idx}
+              onClick={() => handleSelectBook(manga)}
+              className="bg-gray-900 p-3 rounded-lg border border-gray-800 hover:border-indigo-500 cursor-pointer transition"
+            >
+              <div className="w-full h-56 bg-gray-800 rounded overflow-hidden mb-2 relative flex items-center justify-center">
+                <img
+                  src={`/api/covers?url=${encodeURIComponent(manga.coverUrl)}`}
+                  alt={manga.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gray-800 items-center justify-center text-xs text-gray-400 text-center p-2" style={{ display: 'none' }}>
+                  {manga.title}
+                </div>
+              </div>
+              <p className="font-semibold text-sm truncate text-white">{manga.title}</p>
+              <p className="text-xs text-gray-400">{manga.author}</p>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
