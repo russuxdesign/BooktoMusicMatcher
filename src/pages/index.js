@@ -54,7 +54,7 @@ const ALL_MANGA = [
   { title:"One Piece Vol. 1",            author:"Eiichiro Oda",        genre:"Manga",      emoji:"🏴‍☠️",
     covers:["https://covers.openlibrary.org/b/isbn/9781569319017-L.jpg","https://covers.openlibrary.org/b/id/8362550-L.jpg"] },
   { title:"Jujutsu Kaisen Vol. 1",       author:"Gege Akutami",        genre:"Manga",      emoji:"👁️",
-    covers:["https://covers.openlibrary.org/b/isbn/9781974709083-L.jpg","https://covers.openlibrary.org/b/isbn/9781974720002-L.jpg","https://covers.openlibrary.org/b/id/10521849-L.jpg"] },
+    covers:[] },
   { title:"Berserk Vol. 1",              author:"Kentaro Miura",       genre:"Manga",      emoji:"⚔️",
     covers:["https://covers.openlibrary.org/b/isbn/9781593070205-L.jpg","https://covers.openlibrary.org/b/id/8502396-L.jpg"] },
   { title:"Chainsaw Man Vol. 1",         author:"Tatsuki Fujimoto",    genre:"Manga",      emoji:"🪚",
@@ -76,7 +76,7 @@ const ALL_MANGA = [
   { title:"Death Note Vol. 1",           author:"Tsugumi Ohba",        genre:"Manga",      emoji:"📓",
     covers:["https://covers.openlibrary.org/b/isbn/9781421501680-L.jpg","https://covers.openlibrary.org/b/id/8231856-L.jpg"] },
   { title:"Vinland Saga Vol. 1",         author:"Makoto Yukimura",     genre:"Manga",      emoji:"🪓",
-    covers:["https://covers.openlibrary.org/b/isbn/9781612620244-L.jpg","https://covers.openlibrary.org/b/id/8228023-L.jpg"] },
+    covers:["https://covers.openlibrary.org/b/isbn/9781612620787-L.jpg","https://covers.openlibrary.org/b/isbn/9781646512577-L.jpg","https://covers.openlibrary.org/b/id/8228023-L.jpg"] },
   { title:"Bleach Vol. 1", author:"Tite Kubo", genre:"Manga", emoji:"🌙", covers:[] },
 ];
 
@@ -527,11 +527,31 @@ export default function Home() {
     return null;
   };
 
+  // Client-side fallback playlists — mirrors server fallback so user never sees blank
+  const clientFallback = (book) => {
+    const g = (book?.genre||"").toLowerCase();
+    const isManga = g.includes("manga");
+    const base = isManga
+      ? [
+          { name:"Epic Battle Scores",   description:"Intense orchestral for action manga.",    mood:"epic",        spotifyQuery:"epic battle anime orchestral" },
+          { name:"Emotional Anime OSTs", description:"Heartfelt themes from beloved series.",   mood:"melancholic", spotifyQuery:"emotional anime ost piano" },
+          { name:"Focus & Read",         description:"Lo-fi beats to read manga by.",           mood:"cozy",        spotifyQuery:"lofi hip hop reading focus" },
+          { name:"Dark Fantasy",         description:"Brooding orchestral for dark series.",    mood:"dark",        spotifyQuery:"dark fantasy orchestral cinematic" },
+        ]
+      : [
+          { name:"Literary Focus",       description:"Calm instrumental perfect for reading.",  mood:"peaceful",    spotifyQuery:"reading focus classical instrumental" },
+          { name:"Emotional Journey",    description:"Moving scores that follow a story arc.",  mood:"melancholic", spotifyQuery:"emotional cinematic orchestral piano" },
+          { name:"Cozy Reading",         description:"Warm acoustic for an afternoon read.",    mood:"cozy",        spotifyQuery:"cozy acoustic cafe reading" },
+          { name:"Dramatic Moments",     description:"Sweeping orchestral for pivotal scenes.", mood:"epic",        spotifyQuery:"dramatic orchestral cinematic" },
+        ];
+    return { playlists: base, gradient: { color1:"#e8a838", color2:"#7b3fbe", color3:"#1a1a2e", label:"Reading" } };
+  };
+
   const runRecommend = async (book, nolyr) => {
     setError(""); setPhase("loading"); gCloseEmbed = null;
 
     // Fetch cover for ANY book (trending ones already have it, others need lookup)
-    if (!book.cover) {
+    if (!book.cover && !book.covers?.length) {
       const fetchedCover = await fetchBookCover(book.title, book.author || "");
       if (fetchedCover) book = { ...book, cover: fetchedCover };
     }
@@ -544,7 +564,15 @@ export default function Home() {
         body: JSON.stringify({ action:"recommend", book, noLyrics: nolyr }),
       });
       aiResult = await res.json();
-    } catch { setError("Failed to get recommendations."); setPhase("search"); return; }
+      // If API returned empty playlists, use client fallback
+      if (!aiResult?.playlists?.length) {
+        console.warn("Empty playlists from API, using client fallback");
+        aiResult = clientFallback(book);
+      }
+    } catch (e) {
+      console.error("Recommend failed:", e);
+      aiResult = clientFallback(book);
+    }
 
     const aiPlaylists = aiResult.playlists || [];
     setGradient(aiResult.gradient||null);
