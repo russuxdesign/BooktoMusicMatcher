@@ -108,7 +108,6 @@ function CoverImgFallback({ emoji, title, fill, size }) {
     "🪓":"#1e180a,#3e300a","⚗️":"#0a1e1e,#1a3e3e","🌸":"#2e0a1a,#4e1a2e",
     "🌹":"#2e0808,#4e1010","⚛️":"#0a1e2e,#1a3e4e","🏹":"#1e1e0a,#3e3e1a",
     "🦴":"#2e2e2e,#1a1a1a","🧙":"#1a0a2e,#2e1a4e","✨":"#2e2a0a,#4e461a",
-    "🗡️":"#1e1e2e,#2e2e4e","🥂":"#2e280a,#4e401a","⚡":"#282808,#4e4e18",
   };
   const [c1,c2] = (COLORS[emoji]||"#1a1a2e,#2e2e4e").split(",");
   const base = { background:`linear-gradient(145deg,${c1},${c2})`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6 };
@@ -116,88 +115,46 @@ function CoverImgFallback({ emoji, title, fill, size }) {
   return (
     <div style={style}>
       <span style={{fontSize:fill?28:Math.max(14,size*0.33)}}>{emoji||"📖"}</span>
-      <span style={{color:"#9090b8",fontSize:fill?9:7,fontFamily:"monospace",textAlign:"center",padding:"0 5px",lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+      <span style={{color:"#9090b8",fontSize:fill?9:7,fontFamily:"monospace",textAlign:"center",padding:"0 5px",lineHeight:1.3,overflow:"hidden"}}>
         {(title||"").replace(" Vol. 1","")}
       </span>
     </div>
   );
 }
 
-// Fetches the best available cover from Open Library search — works for ANY book/manga
-async function fetchCoverUrl(title, author) {
-  const key = (title+"|"+(author||"")).toLowerCase();
-  if (coverCache[key] !== undefined) return coverCache[key];
-  coverCache[key] = null; // mark as in-flight
-  try {
-    const q = encodeURIComponent(title + (author ? " " + author : ""));
-    const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=cover_i,isbn`);
-    const data = await res.json();
-    // Try cover_i first (most reliable)
-    for (const doc of (data.docs||[])) {
-      if (doc.cover_i) {
-        const url = `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`;
-        coverCache[key] = url;
-        return url;
-      }
-    }
-    // Try ISBNs
-    for (const doc of (data.docs||[])) {
-      for (const isbn of (doc.isbn||[]).slice(0,3)) {
-        const url = `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`;
-        coverCache[key] = url;
-        return url;
-      }
-    }
-  } catch {}
-  coverCache[key] = ""; // nothing found
-  return "";
-}
-
 function CoverImg({ cover, covers, title, author, emoji, size = 72 }) {
-  const fill = size === "fill";
-  const staticSrcs = covers || (cover ? [cover] : []);
-  const [idx, setIdx] = useState(0);
+  const staticSrcs = covers && covers.length > 0 ? covers : (cover ? [cover] : []);
+  const [failIdx, setFailIdx] = useState(0);
+  // dynSrc: null=not fetched, ""=fetch in progress or failed, url=success
   const [dynSrc, setDynSrc] = useState(null);
   const fetched = useRef(false);
-  const allFailed = idx >= staticSrcs.length;
+  const fill = size === "fill";
 
-  useEffect(() => {
-    if (!allFailed || fetched.current) return;
+  const imgStyle = fill
+    ? {position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",display:"block"}
+    : {width:size,height:size*1.4,objectFit:"cover",borderRadius:6,display:"block"};
+
+  const allStaticFailed = failIdx >= staticSrcs.length;
+
+  useEffect(function() {
+    if (!allStaticFailed || fetched.current) return;
     fetched.current = true;
-    const q = encodeURIComponent((title || "") + (author ? " " + author : ""));
-    fetch("https://openlibrary.org/search.json?q=" + q + "&limit=5&fields=cover_i,isbn")
+    var q = "?title=" + encodeURIComponent(title||"") + (author ? "&author=" + encodeURIComponent(author) : "");
+    fetch("/api/covers" + q)
       .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var docs = data.docs || [];
-        for (var i = 0; i < docs.length; i++) {
-          if (docs[i].cover_i) {
-            setDynSrc("https://covers.openlibrary.org/b/id/" + docs[i].cover_i + "-L.jpg");
-            return;
-          }
-        }
-        for (var j = 0; j < docs.length; j++) {
-          var isbns = docs[j].isbn || [];
-          if (isbns.length > 0) {
-            setDynSrc("https://covers.openlibrary.org/b/isbn/" + isbns[0] + "-L.jpg");
-            return;
-          }
-        }
-      })
-      .catch(function() {});
-  }, [allFailed, title, author]);
+      .then(function(d) { setDynSrc(d.url || ""); })
+      .catch(function() { setDynSrc(""); });
+  }, [allStaticFailed, title, author]);
 
-  var imgStyle = fill
-    ? { position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }
-    : { width:size, height:size*1.4, objectFit:"cover", borderRadius:6, display:"block" };
-
-  if (!allFailed) {
-    return <img src={staticSrcs[idx]} alt={title} onError={function(){setIdx(function(n){return n+1;});}} style={imgStyle} />;
+  if (!allStaticFailed) {
+    return <img src={staticSrcs[failIdx]} alt={title} onError={function(){setFailIdx(function(n){return n+1;});}} style={imgStyle} />;
   }
   if (dynSrc) {
-    return <img src={dynSrc} alt={title} onError={function(){setDynSrc(null);}} style={imgStyle} />;
+    return <img src={dynSrc} alt={title} onError={function(){setDynSrc("");}} style={imgStyle} />;
   }
   return <CoverImgFallback emoji={emoji} title={title} fill={fill} size={size} />;
 }
+
 
 // ── SHARE ICONS (top-level — never defined inside a component) ──
 function ShareIgIcon() { return <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="5" stroke="#E1306C" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" stroke="#E1306C" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1" fill="#E1306C"/></svg>; }
