@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Using Open Library CDN links (CORS-friendly, hotlinkable)
 const MANGA_RECOMMENDATIONS = [
   {
     title: "Jujutsu Kaisen, Vol. 1",
@@ -35,7 +36,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
 
-  // Calls our backend API route (/api/books) for real non-hallucinated autocomplete
   useEffect(() => {
     if (query.trim().length < 2) {
       setSuggestions([]);
@@ -101,7 +101,12 @@ export default function Home() {
                 className="p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-800 flex items-center gap-3"
               >
                 {item.coverUrl ? (
-                  <img src={item.coverUrl} alt={item.title} className="w-8 h-12 object-cover rounded" />
+                  <img
+                    src={item.coverUrl}
+                    alt={item.title}
+                    className="w-8 h-12 object-cover rounded"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
                 ) : (
                   <div className="w-8 h-12 bg-gray-800 flex items-center justify-center text-[10px] text-gray-500 rounded">No Cover</div>
                 )}
@@ -140,7 +145,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Manga Section */}
+      {/* Popular Manga Section */}
       <div className="w-full mt-auto">
         <h3 className="text-xl font-bold mb-4 text-gray-200">Popular Manga</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -155,6 +160,11 @@ export default function Home() {
                   src={manga.coverUrl}
                   alt={manga.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback visual if any image fails to load
+                    e.target.onerror = null;
+                    e.target.src = "https://via.placeholder.com/150x225/1f2937/9ca3af?text=No+Cover";
+                  }}
                 />
               </div>
               <p className="font-semibold text-sm truncate text-white">{manga.title}</p>
