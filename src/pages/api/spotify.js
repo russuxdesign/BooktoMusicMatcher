@@ -1,5 +1,3 @@
-// src/pages/api/spotify.js
-
 const FALLBACK_TRACKS = {
   manga: [
     { title: "Kaisen Battle Theme", artist: "Anime Soundtracks", genre: "Shonen High-Energy" },
@@ -21,24 +19,22 @@ export default async function handler(req, res) {
   try {
     const { book } = req.body || req.query || {};
     
-    // Safely parse subjects or title passed from front-end
     const subjects = (book?.subjects || []).join(' ').toLowerCase();
     const title = (book?.title || '').toLowerCase();
 
-    // 1. Return Manga/Shonen tracks if requested
-    if (subjects.includes('manga') || title.includes('jujutsu') || title.includes('vinland') || title.includes('titan')) {
+    // 1. Return Manga tracks
+    if (subjects.includes('manga') || title.includes('jujutsu') || title.includes('vinland') || title.includes('titan') || title.includes('berserk')) {
       return res.status(200).json({ tracks: FALLBACK_TRACKS.manga });
     }
 
-    // 2. Return Fantasy tracks if requested
+    // 2. Return Fantasy tracks
     if (subjects.includes('fantasy') || subjects.includes('magic')) {
       return res.status(200).json({ tracks: FALLBACK_TRACKS.fantasy });
     }
 
-    // 3. Fallback: GUARANTEE tracks are returned (Fixes blank page issue)
+    // 3. Guaranteed fallback output (never returns blank)
     return res.status(200).json({ tracks: FALLBACK_TRACKS.default });
   } catch (error) {
-    // Even if an unexpected server error occurs, never leave the user hanging
     return res.status(200).json({ tracks: FALLBACK_TRACKS.default });
   }
 }
