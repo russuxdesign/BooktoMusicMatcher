@@ -4,25 +4,25 @@ const MANGA_RECOMMENDATIONS = [
   {
     title: "Jujutsu Kaisen, Vol. 1",
     author: "Gege Akutami",
-    coverUrl: "https://upload.wikimedia.org/wikipedia/en/4/46/Jujutsu_kaisen.jpg",
+    coverUrl: "https://covers.openlibrary.org/b/id/12869066-M.jpg",
     subjects: ["manga", "action", "supernatural"]
   },
   {
     title: "Vinland Saga, Vol. 1",
     author: "Makoto Yukimura",
-    coverUrl: "https://upload.wikimedia.org/wikipedia/en/9/91/Vinland_Saga_manga.jpg",
+    coverUrl: "https://covers.openlibrary.org/b/id/8354780-M.jpg",
     subjects: ["manga", "historical", "action"]
   },
   {
     title: "Attack on Titan, Vol. 1",
     author: "Hajime Isayama",
-    coverUrl: "https://upload.wikimedia.org/wikipedia/en/d/d6/Shingeki_no_Kyojin_manga_volume_1.jpg",
+    coverUrl: "https://covers.openlibrary.org/b/id/8361139-M.jpg",
     subjects: ["manga", "dark fantasy", "action"]
   },
   {
     title: "Berserk, Vol. 1",
     author: "Kentaro Miura",
-    coverUrl: "https://upload.wikimedia.org/wikipedia/en/4/4a/Berserk_vol_01_profile.jpg",
+    coverUrl: "https://covers.openlibrary.org/b/id/13289061-M.jpg",
     subjects: ["manga", "dark fantasy", "seinen"]
   }
 ];
@@ -113,15 +113,16 @@ export default function Home() {
                       alt={item.title}
                       className="w-10 h-14 object-cover rounded shadow-sm bg-gray-800"
                       onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://placehold.co/40x56/1f2937/a8c7fa?text=No+Cover";
+                        e.target.style.display = 'none';
+                        if (e.target.nextSibling) {
+                          e.target.nextSibling.style.display = 'flex';
+                        }
                       }}
                     />
-                  ) : (
-                    <div className="w-10 h-14 bg-gray-800 flex items-center justify-center text-[10px] text-gray-500 rounded text-center">
-                      No Cover
-                    </div>
-                  )}
+                  ) : null}
+                  <div className="w-10 h-14 bg-gray-800 rounded flex items-center justify-center text-[10px] text-gray-400 text-center p-1 shrink-0" style={{ display: item.coverUrl ? 'none' : 'flex' }}>
+                    No Cover
+                  </div>
                   <div>
                     <p className="font-semibold text-sm text-gray-100">{item.title}</p>
                     <p className="text-xs text-gray-400">{item.author}</p>
@@ -177,10 +178,15 @@ export default function Home() {
                     alt={manga.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = "https://placehold.co/400x600/1f2937/a8c7fa?text=No+Cover";
+                      e.target.style.display = 'none';
+                      if (e.target.nextSibling) {
+                        e.target.nextSibling.style.display = 'flex';
+                      }
                     }}
                   />
+                  <div className="absolute inset-0 bg-gray-800 items-center justify-center text-xs text-gray-400 text-center p-2" style={{ display: 'none' }}>
+                    {manga.title}
+                  </div>
                 </div>
                 <p className="font-semibold text-sm truncate text-white">{manga.title}</p>
                 <p className="text-xs text-gray-400">{manga.author}</p>
