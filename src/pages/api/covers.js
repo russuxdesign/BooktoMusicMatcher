@@ -1,25 +1,37 @@
-// Server-side cover lookup — no CORS issues, runs on Vercel
 export default async function handler(req, res) {
-  res.setHeader("Cache-Control", "public, max-age=86400"); // cache 24h
-  const { title, author } = req.query;
-  if (!title) return res.status(400).json({ error: "title required" });
+  const { url } = req.query;
+
+  if (!url) {
+    return res.status(400).json({ error: 'No URL provided' });
+  }
 
   try {
-    const q = encodeURIComponent(title + (author ? " " + author : ""));
-    const r = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=cover_i,isbn,title`);
-    const data = await r.json();
-    for (const doc of (data.docs || [])) {
-      if (doc.cover_i) {
-        return res.status(200).json({ url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` });
+    // Fetch the image from the external source, spoofing a normal browser User-Agent
+    // to bypass hotlink protection and bot-blocking.
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
       }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
-    for (const doc of (data.docs || [])) {
-      for (const isbn of (doc.isbn || []).slice(0, 3)) {
-        return res.status(200).json({ url: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg` });
-      }
-    }
-    return res.status(404).json({ error: "not found" });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Forward the content type from the original image (or default to jpeg)
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    
+    // Cache the image for 30 days on Vercel's Edge CDN so it loads instantly
+    res.setHeader('Cache-Control', 'public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400');
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return res.status(500).json({ error: 'Failed to load proxy image' });
   }
 }
